@@ -1,0 +1,344 @@
+package com.westernarc.yuurei;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+
+import com.badlogic.gdx.ApplicationListener;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.graphics.GL10;
+import com.badlogic.gdx.graphics.Mesh;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.math.Quaternion;
+import com.badlogic.gdx.math.Vector3;
+import com.westernarc.yuurei.entities.*;
+
+public class Yuurei implements ApplicationListener {
+	float SCREEN_WIDTH;
+	float SCREEN_HEIGHT;
+	
+	private OrthographicCamera camera;
+	
+	private ShapeRenderer shapeRenderer;
+	private SpriteBatch batch;
+	private BitmapFont font;
+	
+	Player player;
+	ArrayList<Enemy> enemies;
+	ArrayList<Bullet> bullets; //From enemy
+	ArrayList<Bullet> shots; //From player
+	
+	private static final int MAX_CURSORS = 2;
+	Vector3[] cursor; //Stores 2 cursors
+	
+	float RIGHT_MOUSE_X;
+	float RIGHT_MOUSE_Y;
+	float RIGHT_MOUSE_RADIUS;
+	float LEFT_MOUSE_X;
+	float LEFT_MOUSE_Y;
+	float LEFT_MOUSE_RADIUS;
+	
+	Vector3 RIGHT_MOUSE;
+	Vector3 LEFT_MOUSE;
+	
+	float PLAYFIELD_WIDTH;
+	float PLAYFIELD_HEIGHT;
+	
+	@Override
+	public void create() {
+		//SCREEN_WIDTH = Gdx.graphics.getWidth();
+		//SCREEN_HEIGHT = Gdx.graphics.getHeight();
+		//From Sony Xperia Ion
+		SCREEN_WIDTH = 1280;
+		SCREEN_HEIGHT = 720;
+		
+		RIGHT_MOUSE_RADIUS = SCREEN_HEIGHT / 4;
+		LEFT_MOUSE_RADIUS = RIGHT_MOUSE_RADIUS;
+		RIGHT_MOUSE_X = SCREEN_WIDTH - RIGHT_MOUSE_RADIUS - 10;
+		RIGHT_MOUSE_Y = RIGHT_MOUSE_RADIUS + 10;
+		LEFT_MOUSE_X = LEFT_MOUSE_RADIUS + 10;
+		LEFT_MOUSE_Y = LEFT_MOUSE_RADIUS + 10;
+		
+		RIGHT_MOUSE = new Vector3(RIGHT_MOUSE_X, RIGHT_MOUSE_Y, 0);
+		LEFT_MOUSE = new Vector3(LEFT_MOUSE_X, LEFT_MOUSE_Y, 0);
+		
+		PLAYFIELD_WIDTH = 600;
+		PLAYFIELD_HEIGHT = 600;
+		
+		camera = new OrthographicCamera(SCREEN_WIDTH, SCREEN_HEIGHT);
+		batch = new SpriteBatch();
+		font = new BitmapFont();
+		shapeRenderer = new ShapeRenderer();
+		player = new Player();
+		
+		enemies = new ArrayList<Enemy>();
+		bullets = new ArrayList<Bullet>();
+		shots = new ArrayList<Bullet>();
+		
+		cursor = new Vector3[MAX_CURSORS];
+		/*
+		for(Vector3 currentVector : cursor ) {
+			currentVector = new Vector3();
+		}*/
+		cursor[0] = new Vector3();
+		cursor[1] = new Vector3();
+		
+		//camera.translate(SCREEN_WIDTH/2, SCREEN_HEIGHT/2);
+	}
+
+	@Override
+	public void dispose() {
+	}
+	private void drawUI() {
+		/*batch.begin();
+		font.setColor(0.0f, 0.0f, 0.0f, 1.0f);
+		font.setScale(0.8f);
+		font.draw(batch, "vector: " + player.getVector().toString(), 0, 160);
+		font.draw(batch, "destination: " + player.getDestination().toString(), 0, 150);
+		font.draw(batch, "direction: " + player.getDirection().toString(), 0, 140);
+		font.draw(batch, "rotation: " + player.getRotation().toString(), 0, 130);
+		font.draw(batch, "cursor1: " + cursor[0].toString(), -200, 160);
+		font.draw(batch, "cursor2: " + cursor[1].toString(), -200, 150);
+		batch.end();*/
+		
+		//Draw touch circles
+		//shapeRenderer = new ShapeRenderer();
+		shapeRenderer.setColor(0.2f,0,0,1);
+		shapeRenderer.begin(ShapeType.Circle);
+		shapeRenderer.circle(RIGHT_MOUSE_X - SCREEN_WIDTH / 2, RIGHT_MOUSE_Y - SCREEN_HEIGHT / 2, RIGHT_MOUSE_RADIUS);
+		shapeRenderer.setColor(0f,0.2f,0,1);
+		shapeRenderer.circle(LEFT_MOUSE_X - SCREEN_WIDTH / 2, LEFT_MOUSE_Y - SCREEN_HEIGHT / 2, LEFT_MOUSE_RADIUS);
+		shapeRenderer.end();
+		//Draw play field
+		shapeRenderer.begin(ShapeType.Box);
+		shapeRenderer.box(-PLAYFIELD_WIDTH/2, -PLAYFIELD_HEIGHT/2, 0, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT, 0);
+		shapeRenderer.end();
+		
+	}
+	private void drawPlayer() {
+		//shapeRenderer = new ShapeRenderer();
+		shapeRenderer.setProjectionMatrix(camera.projection);
+		shapeRenderer.setColor(0,0,0,1);
+		
+		//Draw player direction
+		shapeRenderer.begin(ShapeType.Line);
+		shapeRenderer.line(player.getX(), player.getY(), player.getDirection().x*30 + player.getX(), player.getDirection().y*30 + player.getY());
+		shapeRenderer.end();
+		shapeRenderer.begin(ShapeType.Box);
+		//Draw player destination
+		shapeRenderer.box(player.getDestination().x, player.getDestination().y, player.getDestination().z, 2,2,0);
+		//Draw player target
+		shapeRenderer.box(player.getTarget().x, player.getTarget().y, player.getTarget().z, 2,2,0);
+		//Draw player body
+		//shapeRenderer.translate(player.getX(), player.getY(), player.getZ());
+		/*shapeRenderer.rotate(1, 0, 0, player.getRotX());
+		shapeRenderer.rotate(0, 1, 0, player.getRotY());
+		shapeRenderer.rotate(0, 0, 1, player.getRotZ());*/
+		shapeRenderer.box(player.getX()-player.getSizeX()/2, player.getY()-player.getSizeY()/2, player.getZ()-player.getSizeZ()/2, player.getSizeX(), player.getSizeY(), player.getSizeZ());
+		shapeRenderer.box(player.getX()-player.getSizeX()/4, player.getY()+player.getSizeY()/4, -player.getSizeZ()/2, player.getSizeX()/2, player.getSizeY()/2, player.getSizeZ());
+		shapeRenderer.end();
+	}
+	private void drawEnemies() {
+		//If there are less than 5 enemies, give a chance to spawn a new enemy
+		if(Math.random() > 0.99f) {
+			Enemy newEnemy = new Enemy();
+			newEnemy.setVector(player.getVector().cpy().add(50 + (float)Math.random()*20, 50 + (float)Math.random()*20,0));
+			if(enemies.size() < 10) enemies.add(newEnemy);
+		}
+		Iterator<Enemy> enem = enemies.iterator();
+		while(enem.hasNext()) {
+			Enemy curEnemy = enem.next();
+			curEnemy.update(1/60f);
+			curEnemy.setTarget(player.getVector());
+			curEnemy.setDestination(player.getVector());
+			//Shoot from enemy
+			if(Math.random() > 0.99) {
+				fireBullet(curEnemy);
+			}
+			//shapeRenderer = new ShapeRenderer();
+			shapeRenderer.setProjectionMatrix(camera.projection);
+			shapeRenderer.setColor(1,0,0,1);
+			shapeRenderer.begin(ShapeType.Box);
+			//shapeRenderer.translate(curEnemy.getX(), curEnemy.getY(), curEnemy.getZ());
+			/*
+			shapeRenderer.rotate(1, 0, 0, curEnemy.getRotX());
+			shapeRenderer.rotate(0, 1, 0, curEnemy.getRotY());
+			shapeRenderer.rotate(0, 0, 1, curEnemy.getRotZ());*/
+						
+			shapeRenderer.box(curEnemy.getX()-curEnemy.getSizeX()/2, curEnemy.getY()-curEnemy.getSizeY()/2, -curEnemy.getSizeZ()/2, curEnemy.getSizeX(), curEnemy.getSizeY(), curEnemy.getSizeZ());
+			shapeRenderer.end();
+		}
+	}
+	private void drawBullets() {
+		Iterator<Bullet> bull = bullets.iterator();
+		while(bull.hasNext()) {
+			Bullet curBullet = bull.next();
+			if(curBullet.getX() > PLAYFIELD_WIDTH/2 || curBullet.getX() < -PLAYFIELD_WIDTH/2 || curBullet.getY() > PLAYFIELD_HEIGHT/2 || curBullet.getY() < -PLAYFIELD_HEIGHT/2) {
+				bull.remove();
+			}
+			curBullet.update(1/60f);
+			//shapeRenderer = new ShapeRenderer();
+			shapeRenderer.setProjectionMatrix(camera.projection);
+			shapeRenderer.setColor(1,0,0,1);
+			shapeRenderer.begin(ShapeType.Box);
+			//shapeRenderer.translate(curBullet.getX(), curBullet.getY(), curBullet.getZ());
+			/*
+			shapeRenderer.rotate(1, 0, 0, curBullet.getRotX());
+			shapeRenderer.rotate(0, 1, 0, curBullet.getRotY());
+			shapeRenderer.rotate(0, 0, 1, curBullet.getRotZ());*/
+						
+			shapeRenderer.box(curBullet.getX()-curBullet.getSizeX()/2, curBullet.getY()-curBullet.getSizeY()/2, -curBullet.getSizeZ()/2, curBullet.getSizeX(), curBullet.getSizeY(), curBullet.getSizeZ());
+			shapeRenderer.end();
+		}
+		
+		Iterator<Bullet> shotIterator = shots.iterator();
+		while(shotIterator.hasNext()) {
+			Bullet curBullet = shotIterator.next();
+			if(curBullet.getX() > PLAYFIELD_WIDTH/2 || curBullet.getX() < -PLAYFIELD_WIDTH/2 || curBullet.getY() > PLAYFIELD_HEIGHT/2 || curBullet.getY() < -PLAYFIELD_HEIGHT/2) {
+				shotIterator.remove();
+			}
+			curBullet.update(1/60f);
+			//shapeRenderer = new ShapeRenderer();
+			//shapeRenderer.setProjectionMatrix(camera.projection);
+			shapeRenderer.setColor(1,0,1,1);
+			shapeRenderer.begin(ShapeType.Box);
+			/*shapeRenderer.translate(curBullet.getX(), curBullet.getY(), curBullet.getZ());
+
+			shapeRenderer.rotate(1, 0, 0, curBullet.getRotX());
+			shapeRenderer.rotate(0, 1, 0, curBullet.getRotY());
+			shapeRenderer.rotate(0, 0, 1, curBullet.getRotZ());*/
+						
+			shapeRenderer.box(curBullet.getX()-curBullet.getSizeX()/2, curBullet.getY()-curBullet.getSizeY()/2, -curBullet.getSizeZ()/2, curBullet.getSizeX(), curBullet.getSizeY(), curBullet.getSizeZ());
+			shapeRenderer.end();
+		}
+	}
+	private void checkBulletCollisions() {
+		Iterator<Enemy> ent = enemies.iterator();
+		while(ent.hasNext()) {
+			Enemy e = ent.next();
+			//For each entity in the arraylist, check if each entity
+			//has a collision with each bullet
+			
+			Iterator<Bullet> bulletIterator = shots.iterator();
+			while(bulletIterator.hasNext()) {
+				Bullet b = bulletIterator.next();
+				
+				//If there is a collision, remove both
+				if(b.collidesWith(e)) {
+					bulletIterator.remove();
+					ent.remove();
+				}
+			}
+		}
+	}
+	@Override
+	public void render() {		
+		Gdx.gl.glClearColor(1, 1, 1, 1);
+		Gdx.gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
+		camera.update(true);
+		//batch.setProjectionMatrix(camera.combined);
+		shapeRenderer.setProjectionMatrix(camera.combined);
+		
+		drawUI();
+		camera.translate(10, 0, 0);
+		//camera.update(true);
+		handleKeyInput();
+		handleTouchInput();
+		
+		player.update(1/60f);
+		drawPlayer();
+		
+		//checkBulletCollisions();
+		drawEnemies();
+
+		drawBullets();
+	}
+
+	private void handleKeyInput() {
+		if(Gdx.input.isKeyPressed(Keys.A)) player.getDestination().add(-1,0,0);
+		if(Gdx.input.isKeyPressed(Keys.D)) player.getDestination().add(1,0,0);
+		if(Gdx.input.isKeyPressed(Keys.W)) player.getDestination().add(0,1,0);
+		if(Gdx.input.isKeyPressed(Keys.S)) player.getDestination().add(0,-1,0);
+		
+		if(Gdx.input.isKeyPressed(Keys.J)) player.getTarget().add(-1,0,0);
+		if(Gdx.input.isKeyPressed(Keys.L)) player.getTarget().add(1,0,0);
+		if(Gdx.input.isKeyPressed(Keys.I)) player.getTarget().add(0,1,0);
+		if(Gdx.input.isKeyPressed(Keys.K)) player.getTarget().add(0,-1,0);
+		
+		if(Gdx.input.isKeyPressed(Keys.SPACE)) {
+			//splayer.setTarget(Gdx.input.getX() - Gdx.graphics.getWidth()/2, -Gdx.input.getY() + Gdx.graphics.getHeight()/2, 0);
+			if(player.isReadyToFire()) {
+				fireBullet(player);
+				player.fire();
+			}
+		}
+	}
+	private void handleTouchInput() {
+		if(Gdx.input.isTouched()) {
+			cursor[0].x = Gdx.input.getX(0) - SCREEN_WIDTH / 2;
+			cursor[0].y = -(Gdx.input.getY(0) - SCREEN_HEIGHT / 2);
+			
+			cursor[1].x = Gdx.input.getX(1) - SCREEN_WIDTH / 2;
+			cursor[1].y = -(Gdx.input.getY(1) - SCREEN_HEIGHT / 2);
+			
+			//shapeRenderer = new ShapeRenderer();
+			//shapeRenderer.translate(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 0);
+			shapeRenderer.setColor(0f,0.3f,0,1);
+			
+			//Test both cursors whether they are in the movement fields
+			for(int currentCursor = 0; currentCursor < MAX_CURSORS; currentCursor++) {
+				if(Gdx.input.isTouched(currentCursor)) {
+					Vector3 mouseDiffRight = cursor[currentCursor].cpy().sub(RIGHT_MOUSE.x - SCREEN_WIDTH / 2, RIGHT_MOUSE.y - SCREEN_HEIGHT / 2, 0);
+					//If cursor is within right mouse
+					Vector3 mouseDiffLeft = cursor[currentCursor].cpy().sub(LEFT_MOUSE.x - SCREEN_WIDTH / 2, LEFT_MOUSE.y - SCREEN_HEIGHT / 2, 0);
+					//If cursor is within left mouse
+					
+					if(Math.abs(mouseDiffRight.len()) < RIGHT_MOUSE_RADIUS) {
+						player.setTarget(player.getVector().cpy().add(mouseDiffRight));
+						shapeRenderer.setColor(1,0,0,1);
+						if(player.isReadyToFire()) {
+							fireBullet(player);
+							player.fire();
+						}
+					}
+					//If cursor is within left mouse
+					if(Math.abs(mouseDiffLeft.len()) < LEFT_MOUSE_RADIUS) {
+						player.setDestination(player.getVector().cpy().add(mouseDiffLeft.mul(1/player.getMagnitude())));
+						shapeRenderer.setColor(1,0,0,1);
+					}
+					shapeRenderer.begin(ShapeType.Circle);
+					shapeRenderer.circle(cursor[currentCursor].x, cursor[currentCursor].y, 15);
+					shapeRenderer.end();
+				}
+			}
+		}
+	}
+	private void fireBullet(Entity source) {
+		Bullet newBull = new Bullet();
+		newBull.setVector(source.getVector());
+		newBull.setDirection(new Vector3(source.getTarget()).sub(source.getVector()));
+		newBull.setMagnitude(1f);
+		if(source instanceof Player) {
+			shots.add(newBull);
+		} else {
+			bullets.add(newBull);
+		}
+	}
+	@Override
+	public void resize(int width, int height) {
+	}
+	@Override
+	public void pause() {
+	}
+	@Override
+	public void resume() {
+	}
+}

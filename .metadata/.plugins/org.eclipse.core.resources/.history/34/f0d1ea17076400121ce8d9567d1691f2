@@ -1,0 +1,86 @@
+package com.westernarc.graphics;
+
+import java.util.ArrayList;
+
+import com.badlogic.gdx.graphics.g3d.model.Model;
+import com.badlogic.gdx.math.Vector3;
+
+public class Node {
+	protected Model model;
+
+	public ArrayList<Node> children = new ArrayList<Node>();
+	
+	protected Vector3 translation;
+	protected Vector3 rotation;
+	protected Vector3 scale;
+	
+	public Node() {
+		translation = new Vector3();
+		rotation = new Vector3();
+		scale = new Vector3(1,1,1);
+	}
+	
+	public Model getModel () {
+		return model;
+	}
+
+	public void setModel (Model model) {
+		this.model = model;
+	}
+	
+	public void setTranslation(float x, float y, float z) {
+		setTranslation(new Vector3(x,y,z));
+	}
+
+	public Vector3 getTranslation () {
+		return translation;
+	}
+
+	public void setTranslation (Vector3 translation) {
+		this.translation = translation;
+	}
+	
+	public void translate(Vector3 vec) {
+		translate(vec.x, vec.y, vec.z);
+	}
+	public void translate(float x, float y, float z) {
+		translation.add(x, y, z);
+	}
+	public void rotate(Vector3 vec) {
+		rotate(vec.x, vec.y, vec.z);
+	}
+	public void rotate(float x, float y, float z) {
+		rotation.add(x, y, z);
+	}
+	public void scale(Vector3 vec) {
+		scale(vec.x, vec.y, vec.z);
+	}
+	public void scale(float x, float y, float z) {
+		scale.add(x, y, z);
+	}
+	public void addChild(Node node) {
+		children.add(node);
+	}
+
+	public Vector3 getRotation () {
+		return rotation;
+	}
+
+	public void setRotation (Vector3 rotation) {
+		this.rotation = rotation;
+	}
+	public void setRotation(float x, float y, float z) {
+		rotation.set(x,y,z);
+	}
+
+	public Vector3 getScale () {
+		return scale;
+	}
+
+	public void setScale (Vector3 scale) {
+		this.scale = scale;
+	}
+	public void setScale(float x, float y, float z) {
+		scale.set(x,y,z);
+	}
+}

@@ -1,0 +1,16 @@
+1358731963694	Rename field 'BULLET_BALLP'
+1358731966869	Rename field 'BULLET_BALLR'
+1358731969923	Rename field 'BULLET_BALLrP'
+1358732002044	Rename field 'BULLET_BALLR'
+1358732005304	Rename field 'BULLET_BALLG'
+1358732008423	Rename field 'BULLET_BALLgR'
+1358799240558	Copy compilation units
+1358799265753	Copy compilation units
+1358807453208	Rename field 'enemySakuya'
+1358882511931	Rename method 'setRModel'
+1358882515242	Rename method 'setArmRModel'
+1358898249084	Rename local variable 'sakuya'
+1358898478863	Rename local variable 'marisa'
+1358914661793	Rename local variable 'newTarg2'
+1358999748940	Rename field 'magicCircle'
+1359081522184	Rename field 'bossAlive'

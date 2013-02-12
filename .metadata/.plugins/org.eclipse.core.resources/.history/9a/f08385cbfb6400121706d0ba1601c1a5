@@ -1,0 +1,22 @@
+package com.westernarc.yuurei.entities;
+
+public class Bullet extends Entity {
+	private int damage;
+	
+	public Bullet() {
+		setVector(0,0,0);
+		setRotation(0,0,0);
+		setSize(9);
+		setDirection(0,1,0);
+		setMagnitude(40);
+		
+		damage = 5;
+	}
+	@Override
+	public void update(float tpf) {
+		super.update(tpf);
+	}
+	public int getDamage() {
+		return damage;
+	}
+}

@@ -1,0 +1,109 @@
+package com.westernarc.graphics;
+
+import com.badlogic.gdx.graphics.g3d.model.Model;
+import com.badlogic.gdx.math.Vector3;
+
+public class PlayerNode extends Node {
+	Node torso, lArm, rArm;
+	
+	float changeFactor = 1.001f;
+	float resetRate = 0.4f;
+	
+	//Largest angle rotation can be
+	float rotateMax = 15;
+	//Farthest away that input will matter for
+	//destination and rotation calculations
+	float inputMax = 100;
+	
+	//Model floats up and down
+	float floatMax = 0.5f; 
+	float floatMin = 0f;
+	float floatRate = 0.005f;
+	float currentFloat;
+	boolean rising;
+	
+	
+	private Vector3 destination;
+	
+	public Vector3 getDestination () {
+		return destination;
+	}
+
+	public void setDestination (Vector3 destination) {
+		this.destination = destination;
+	}
+
+	public PlayerNode() {
+		lArm = new Node();
+		rArm = new Node();
+		torso = new Node();
+		
+		addChild(torso);
+		torso.addChild(lArm);
+		torso.addChild(rArm);
+		lArm.translate(0.4f,0,0);
+		lArm.rotate(0,0,-70);
+		rArm.rotate(0,0,70);
+		rArm.translate(-0.4f,0,0);
+		
+		currentFloat = 0;
+		rising = true;
+	}
+	
+	public void setLModel(Model m) {
+		lArm.setModel(m);
+	}
+	public void setRModel(Model m) {
+		rArm.setModel(m);
+	}
+	public void setTModel(Model m) {
+		torso.setModel(m);
+	}
+	
+	public Node getTorso() {
+		return torso;
+	}
+	
+	public void update() {
+		if(rotation.x > 0) rotate(-resetRate,0,0);
+		if(rotation.x < 0) rotate(resetRate,0,0);
+		if(rotation.y > 0) rotation.y -= 0.6f;
+		if(rotation.y < 0) rotation.y += 0.6f;
+		if(rotation.z > 0) rotate(0,0,-resetRate);
+		if(rotation.z < 0) rotate(0,0,resetRate);
+		
+		//Handle floating
+		if(!rising) {
+			torso.translate(0, -floatRate, 0);
+		} else {
+			torso.translate(0, floatRate, 0);
+		}
+		if(torso.getTranslation().y > floatMax) rising = false;
+		if(torso.getTranslation().y < floatMin) rising = true;
+		
+		//Handle destination calculation and model rotation
+		Vector3 diff = destination.cpy().sub(translation);
+		float dist = diff.len();
+		diff = diff.nor();
+		//Rotate by the destination vector
+		rotate(-diff.y,0,diff.x);
+	}
+	
+	@Override
+	public void rotate(float x, float y, float z) {
+		//Rotate the arms at a different rate than the torso
+		//Rotates all of the body
+		Vector3 vec = new Vector3(x,y,z).mul(changeFactor);
+		
+		//If the rotation would put the total rotation over the max,
+		//set the to-rotate value to 0
+		if(rotation.x > rotateMax && vec.x > 0) vec.x = 0;
+		if(rotation.x < -rotateMax && vec.x < 0) vec.x = 0;
+		if(rotation.z > rotateMax && vec.z > 0) vec.z = 0;
+		if(rotation.z < -rotateMax && vec.z < 0) vec.z = 0;
+		
+		super.rotate(vec.x,vec.y,vec.z);		
+		lArm.rotate(vec);
+		rArm.rotate(vec);
+	}
+}

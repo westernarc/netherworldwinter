@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Copy element &apos;starburst.p&apos; to &apos;particledef&apos;&#x0D;&#x0A;- Original project: &apos;yuurei-android&apos;&#x0D;&#x0A;- Destination element: &apos;particledef&apos;&#x0D;&#x0A;- Original element: &apos;starburst.p&apos;" description="Copy file" element1="assets/data/particledef/starburst.p" files="1" flags="589830" folders="0" id="org.eclipse.jdt.ui.copy" policy="org.eclipse.jdt.ui.copyResources" stamp="1359324867373" target="/yuurei-android/assets/data/particledef" units="0" version="1.0"/>
+</session>

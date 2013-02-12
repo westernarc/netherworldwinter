@@ -1,0 +1,1350 @@
+package com.westernarc.yuurei;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+
+import com.badlogic.gdx.ApplicationListener;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.GL10;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.PerspectiveCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g3d.decals.Decal;
+import com.badlogic.gdx.graphics.g3d.decals.DecalBatch;
+import com.badlogic.gdx.graphics.g3d.loaders.ModelLoaderRegistry;
+import com.badlogic.gdx.graphics.g3d.loaders.g3d.G3dLoader;
+import com.badlogic.gdx.graphics.g3d.loaders.g3d.chunks.G3dExporter;
+import com.badlogic.gdx.graphics.g3d.loaders.ogre.OgreXmlLoader;
+import com.badlogic.gdx.graphics.g3d.materials.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.materials.Material;
+import com.badlogic.gdx.graphics.g3d.materials.TextureAttribute;
+import com.badlogic.gdx.graphics.g3d.model.still.StillModel;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.math.collision.BoundingBox;
+import com.westernarc.util.FastMath;
+import com.westernarc.yuurei.graphics.Node;
+import com.westernarc.yuurei.entities.*;
+import com.westernarc.yuurei.graphics.PlayerNode;
+import com.badlogic.gdx.graphics.g3d.materials.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.materials.Material;
+import com.badlogic.gdx.graphics.g3d.materials.TextureAttribute;
+
+public class Yuurei implements ApplicationListener {
+	//Debug draws wireframes
+	boolean debug = false;
+	
+	float SCREEN_WIDTH;
+	float SCREEN_HEIGHT;
+	
+	private PerspectiveCamera camera;
+	
+	private ShapeRenderer shapeRenderer;
+	private ShapeRenderer uiRenderer;
+	private SpriteBatch batch;
+	private BitmapFont largeFont;
+	private BitmapFont defaultFont;
+	private BitmapFont boldFont;
+	
+	private DecalBatch decalBatch;
+	
+	private float SCALE_BULLET = 4f;
+	private float SCALE_SHOT = 5f;
+	private float SCALE_ENEMY = 8;
+	//Items start scaled 0; Item class expands it
+	private float SCALE_ITEM = 0;
+	
+	//Amount of damage a bomb inflicts
+	private int BOMB_DAMAGE = 50;
+	
+	//3D assets.
+	//Sky model.  This will fade through a number of shades of black to simulate fading in
+	//when the game starts
+	private static final int SKY_SHADES = 32;
+	Material[] skyMatShade;
+	StillModel skyModel;
+	Node backgroundNode;
+	Node skyNode;
+	
+	//Boundary
+	StillModel boundary;
+	Node boundaryNode;
+	
+	//Player node is for the player character
+	//Consists of torso and two arms
+	PlayerNode playerNode;
+	StillModel torso;
+	StillModel lArm;
+	StillModel rArm;
+	
+	//Enemy models
+	private static final int ENEMY_FAIRY = 0, ENEMY_SAKUYA = 1;
+	private static final int ENEMY_TYPEMAX = 8;
+	StillModel[] enemyModel;
+	
+	//Bullet models
+	private static final int BULLET_BALL = 0;
+	private static final int BULLET_TALISMAN = 1;
+	private static final int BULLET_HALO = 2;
+	private static final int BULLET_TYPEMAX = 8;
+	StillModel[] bulletModel;
+	
+	//Shot models
+	private static final int SHOT_TYPEMAX = 8;
+	private static final int SHOT_0 = 0, SHOT_1 = 1, SHOT_2 = 2, SHOT_3 = 3;
+	StillModel[] shotModel;
+		
+	//Item models
+	StillModel powerItemModel;
+	StillModel scoreItemModel;
+	StillModel bombItemModel;
+	StillModel lifeItemModel;
+
+	//Objects
+	//Player object
+	Player player;
+	//List of enemies
+	ArrayList<Enemy> enemies;
+	//List of projectiles
+	ArrayList<Bullet> bullets; //From enemy
+	ArrayList<Bullet> shots; //From player
+	//List of items
+	ArrayList<Item> items;
+	
+	private static final int MAX_CURSORS = 2;
+	Vector3[] cursor; //Stores 2 cursors
+	
+	float RIGHT_MOUSE_X;
+	float RIGHT_MOUSE_Y;
+	float RIGHT_MOUSE_RADIUS;
+	float LEFT_MOUSE_X;
+	float LEFT_MOUSE_Y;
+	float LEFT_MOUSE_RADIUS;
+	
+	Vector3 RIGHT_MOUSE;
+	Vector3 LEFT_MOUSE;
+	
+	float PLAYFIELD_WIDTH;
+	float PLAYFIELD_HEIGHT;
+	
+	//GAME VARIABLES
+	int gameLife;
+	int gameScore;
+	int gameBomb;
+	//Cooldown for bombing
+	float BOMB_COOLDOWN = 1f;
+	float bombTimer;
+	boolean bombReady;
+	
+	int gameLevel;
+	float gameTime;
+	//Stores whether or not the player is bombing
+	boolean bombing;
+	
+	//State structure:
+	//Title -(continue)> Game.play -(death)> Game.score -(retry)> Game.play
+	//State of application
+	private enum APP_STATE {
+		SPLASH, GAME
+	}
+	//State within game state
+	private enum GAME_STATE {
+		TITLE, PLAY, SCORE
+	}
+	APP_STATE appState;
+	GAME_STATE gameState;
+	
+	private boolean gamePaused;
+	
+	//Timer for score screen
+	private float stateChangeTime;
+	private final float STATECHANGE_MIN_TIME = 2;
+	
+	//Sprite used by batch to make screen fade in and out
+	Decal fadeDecal;
+	
+	//Fade value
+	private float fadeValue;
+	private float FADE_MIN = 0;
+	private float FADE_MAX = 1;
+	private boolean fading;
+	//Timer for fading the splash screen
+	//Tracks the time spent after being clicked
+	private float splashScreenTime; 
+	private static final float SPLASHSCREEN_MAX_TIME = 1;
+	private boolean splashScreenToEnd;
+	
+	//Angle that camera is rotated at the beginning of the game
+	//The angle starts at an initial angle the first time the game starts.
+	//The angle turns downward during gameplay, and stays there.
+	//The angle starts at the init angle and ends at the targ angle.
+	private final static float CAM_INIT_ANGLE = 70;
+	private final static float CAM_TARG_ANGLE = 0;
+	private float camAngle;
+	
+	
+	private void loadModels() {
+		//Load sky
+		Texture skyTex = new Texture(Gdx.files.internal("textures/back.png"));
+		
+		//Create array of sky shade materials
+		skyMatShade = new Material[SKY_SHADES];
+		
+		//Create the shades for the sky
+		for(int i = 0; i < SKY_SHADES; i++) {
+			float shadeValue = i / (float)SKY_SHADES;
+			Color shadeColor = new Color(shadeValue,shadeValue,shadeValue,1);
+			skyMatShade[i] = new Material("mat", new TextureAttribute(skyTex, 0, "s_tex"), new ColorAttribute(shadeColor, "diffuseColor"));
+		}
+		
+		skyModel = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/sky.g3dt"));
+		//Set the material to shade 0; black.  Fade it in when the game starts
+		skyModel.setMaterial(skyMatShade[0]);
+		
+		skyNode = new Node();
+		skyNode.setModel(skyModel);
+		backgroundNode = new Node();
+		backgroundNode.addChild(skyNode);
+		skyNode.setScale(16,16,16);
+		
+		//Boundary
+		Texture boundaryTex = new Texture(Gdx.files.internal("textures/boundary.png"));
+		Material boundaryMat = new Material("mat", new TextureAttribute(boundaryTex, 0, "s_tex"), new ColorAttribute(Color.WHITE, "diffuseColor"));
+		boundary = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/boundary.g3dt"));
+		boundary.setMaterial(boundaryMat);
+		
+		boundaryNode = new Node();
+		boundaryNode.setModel(boundary);
+		boundaryNode.setScale(13,13,13);
+		
+		backgroundNode.addChild(boundaryNode);
+		
+		Texture playerTex = new Texture(Gdx.files.internal("textures/yuyuko.png"));
+		Material playerMat = new Material("mat", new TextureAttribute(playerTex, 0, "s_tex"), new ColorAttribute(Color.WHITE, "diffuseColor"));
+		
+		//Player assets
+		torso = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/yutorso.g3dt"));
+		rArm = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/yuarmsR.g3dt"));
+		lArm = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/yuarmsL.g3dt"));
+		
+		torso.setMaterial(playerMat);
+		rArm.setMaterial(playerMat);
+		lArm.setMaterial(playerMat);
+		
+		Texture enemy1Tex = new Texture(Gdx.files.internal("textures/enemy.png"));
+		Material enemy1Mat = new Material("mat", new TextureAttribute(enemy1Tex, 0, "s_tex"), new ColorAttribute(Color.WHITE, "diffuseColor"));
+		
+		//Enemy assets
+		enemyModel = new StillModel[ENEMY_TYPEMAX];
+		enemyModel[ENEMY_FAIRY] = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/enemy1.g3dt"));
+		enemyModel[ENEMY_FAIRY].setMaterial(enemy1Mat);
+		
+		//Bullets
+		bulletModel = new StillModel[BULLET_TYPEMAX];
+		bulletModel[BULLET_BALL] = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/bullet0.g3dt"));
+		Texture bullTex1 = new Texture(Gdx.files.internal("textures/bullet.png"));
+		Material bullMat1 = new Material("mat", new TextureAttribute(bullTex1, 0, "s_tex"), new ColorAttribute(Color.WHITE, "diffuseColor"));
+		bulletModel[BULLET_BALL].setMaterial(bullMat1);
+		
+		bulletModel[BULLET_TALISMAN] = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/bullet1.g3dt"));
+		bulletModel[BULLET_TALISMAN].setMaterial(bullMat1);
+		
+		//Shots
+		//Load all shots.  All use same material
+		Texture shotTex1 = new Texture(Gdx.files.internal("textures/shot.png"));
+		Material shotMat1 = new Material("mat", new TextureAttribute(shotTex1, 0, "s_tex"), new ColorAttribute(Color.WHITE, "diffuseColor"));
+
+		//Only 4 types of shot now, otherwise use SHOT_TYPEMAX
+		shotModel = new StillModel[SHOT_TYPEMAX];
+		for(int currentModel = 0; currentModel < 4; currentModel++) {
+			shotModel[currentModel] = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/shot" + currentModel + ".g3dt"));
+			shotModel[currentModel].setMaterial(shotMat1);
+		}
+		
+		playerNode = new PlayerNode();
+		playerNode.setTModel(torso);
+		playerNode.setLModel(lArm);
+		playerNode.setRModel(rArm);
+		playerNode.scale(10,10,10);
+		
+		//Link the graph node to the abstract entity
+		player.setNode(playerNode);
+		
+		//Items
+		powerItemModel = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/powerItem.g3dt"));
+		scoreItemModel = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/scoreItem.g3dt"));
+		lifeItemModel = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/lifeItem.g3dt"));
+		bombItemModel = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/bombItem.g3dt"));
+		
+		Texture itemTex = new Texture(Gdx.files.internal("textures/item.png"));
+		Material itemMat = new Material("mat", new TextureAttribute(itemTex, 0, "s_tex"), new ColorAttribute(Color.WHITE, "diffuseColor"));
+		
+		powerItemModel.setMaterial(itemMat);
+		scoreItemModel.setMaterial(itemMat);
+		lifeItemModel.setMaterial(itemMat);
+		bombItemModel.setMaterial(itemMat);
+	}
+	@Override
+	public void create() {
+		//SCREEN_WIDTH = Gdx.graphics.getWidth();
+		//SCREEN_HEIGHT = Gdx.graphics.getHeight();
+		//From Sony Xperia Ion
+		SCREEN_WIDTH = 1280;
+		SCREEN_HEIGHT = 720;
+		initGame();
+	}
+	private void initGame() {
+		appState = APP_STATE.SPLASH;
+		gameState = GAME_STATE.TITLE;
+		
+		RIGHT_MOUSE_RADIUS = SCREEN_HEIGHT / 4;
+		LEFT_MOUSE_RADIUS = RIGHT_MOUSE_RADIUS;
+		RIGHT_MOUSE_X = SCREEN_WIDTH - RIGHT_MOUSE_RADIUS - 10;
+		RIGHT_MOUSE_Y = RIGHT_MOUSE_RADIUS + 10;
+		LEFT_MOUSE_X = LEFT_MOUSE_RADIUS + 10;
+		LEFT_MOUSE_Y = LEFT_MOUSE_RADIUS + 10;
+		
+		RIGHT_MOUSE = new Vector3(RIGHT_MOUSE_X, RIGHT_MOUSE_Y, 0);
+		LEFT_MOUSE = new Vector3(LEFT_MOUSE_X, LEFT_MOUSE_Y, 0);
+		
+		PLAYFIELD_WIDTH = 600;
+		PLAYFIELD_HEIGHT = 600;
+		
+		//Set up the 3d camera
+		camera = new PerspectiveCamera(40, SCREEN_WIDTH, SCREEN_HEIGHT);
+		camera.position.set(0,0,800);
+		camera.far = 10000;
+		camAngle = CAM_INIT_ANGLE;
+		camera.rotate(Vector3.X, camAngle);
+		
+		batch = new SpriteBatch();
+		defaultFont = new BitmapFont(Gdx.files.internal("font/SansSerif25.fnt"), false);
+		largeFont = new BitmapFont(Gdx.files.internal("font/SansSerif72.fnt"), false);
+		boldFont = new BitmapFont(Gdx.files.internal("font/SansSerif72b.fnt"), false);
+		shapeRenderer = new ShapeRenderer();
+		uiRenderer = new ShapeRenderer();
+		uiRenderer.translate(SCREEN_WIDTH/2, SCREEN_HEIGHT/2, 0);
+		player = new Player();
+		
+		decalBatch = new DecalBatch();
+		
+		//Create the array lists
+		enemies = new ArrayList<Enemy>();
+		bullets = new ArrayList<Bullet>();
+		shots = new ArrayList<Bullet>();
+		items = new ArrayList<Item>();
+		
+		cursor = new Vector3[MAX_CURSORS];
+		cursor[0] = new Vector3();
+		cursor[1] = new Vector3();
+		
+		gameLife = 100;
+		gameBomb = 6;
+		bombReady = false;
+		bombTimer = 0;
+		gameLevel = 1;
+		
+		stateChangeTime = 0;
+		
+		splashScreenTime = 0;
+		splashScreenToEnd = false;
+		
+		loadModels();
+		
+		unfade();
+		fadeDecal = Decal.newDecal(new TextureRegion(new Texture(Gdx.files.internal("textures/black.png"))));
+		fadeDecal.setScaleX(SCREEN_WIDTH);
+		fadeDecal.setScaleY(SCREEN_HEIGHT);
+		fadeValue = 1;
+	
+		unpauseGame();
+	}
+	private void update(float tpf) {
+		handleTouchInput();
+		handleKeyInput();
+		//Update loop.  Switch depending on state.
+		switch(appState) {
+			case SPLASH:
+				updateSplashState(tpf);
+				break;
+			case GAME:
+				updateGameState(tpf);
+				break;
+		}
+	}
+	
+	//Keeps track of splash state dialog alpha
+	boolean updateSplashStateFading;
+	float updateSplashStateTime;
+	final static float updateSplashStateCycleTime = 1;
+	float splashStateAlphaTitle;
+	private void updateSplashState(float tpf) {
+		splashStateAlphaTitle += tpf;
+		if(splashStateAlphaTitle > 1) {
+			splashStateAlphaTitle = 1;
+		}
+		batch.begin();
+		largeFont.setColor(1f, 1f, 1f, splashStateAlphaTitle);
+		largeFont.setScale(0.7f);
+		boldFont.setScale(0.7f);
+		largeFont.draw(batch, "WESTERN",410,440);
+		boldFont.setColor(0.3f,0,0,splashStateAlphaTitle);
+		boldFont.draw(batch, "|",690,440);
+		largeFont.setColor(1,1,1,1);
+		largeFont.draw(batch, "ARC",720,440);
+		largeFont.setScale(0.2f);
+		
+		//Fade code
+		if(updateSplashStateFading) updateSplashStateTime += tpf; else updateSplashStateTime -= tpf;
+		if(updateSplashStateTime > updateSplashStateCycleTime) {
+			updateSplashStateTime = updateSplashStateCycleTime;
+			updateSplashStateFading = !updateSplashStateFading;
+		}
+		if(updateSplashStateTime < 0) {
+			updateSplashStateTime = 0;
+			updateSplashStateFading = !updateSplashStateFading;
+		}
+		float fadeColor = updateSplashStateTime / updateSplashStateCycleTime;
+		largeFont.setColor(1,1,1,fadeColor);
+		largeFont.draw(batch, "PRESS TO SKIP",570,140);
+		batch.end();
+		if(splashScreenToEnd) splashScreenTime += tpf;
+		if(splashScreenTime > SPLASHSCREEN_MAX_TIME) {
+			appState = APP_STATE.GAME;
+			pauseGame();
+			
+			//Create an alpha value for each title element
+			//Reset the variables for use in the next phase
+			titleAlpha = new float[3];
+			for(int i = 0; i < 3; i++) titleAlpha[i] = -1;
+			titleStateTime = 0;
+			titleFadedIn = false;
+			titleFadedOut = false;
+		}
+	}
+	private void updateEntities(float tpf) {
+		player.update(tpf);
+	}
+	
+	
+	//Keeping track of title text
+	float titleStateTime;
+	float titleAlpha[];
+	//The final alphas of each line of text
+	float titleAlphaMax[] = {0.7f, 1f, 0.4f};
+	boolean titleFadedIn;
+	boolean titleFadedOut;
+	
+	private void updateGameTitleState(float tpf) {
+		//Calculate the alphas of each line
+		if(!titleFadedIn) {	
+			for(int i = 0; i < 3; i++) {
+				if(titleAlpha[i] < titleAlphaMax[i]) {
+					titleAlpha[i] += tpf;
+				} 
+				if(titleAlpha[i] > 1) {
+					titleAlpha[i] = 1;
+					titleFadedIn = true;
+				}
+			}
+		}
+		batch.begin();
+		if(titleAlpha[0] < 0) {
+			defaultFont.setColor(1f, 1f, 1f, 0);
+		} else {
+			defaultFont.setColor(1f, 1f, 1f, titleAlpha[0]);
+		}
+		defaultFont.setScale(0.6f);
+		defaultFont.draw(batch, "t o u c h   t o   s t a r t !", 1000, 40);
+		defaultFont.setScale(0.6f);
+		defaultFont.draw(batch, "t o u h o u", 280, 540);
+		defaultFont.setScale(1f);
+		if(titleAlpha[1] < 0) {
+			defaultFont.setColor(1f, 1f, 1f, 0);
+		} else {
+			defaultFont.setColor(1f, 1f, 1f, titleAlpha[1]);
+		}
+		defaultFont.draw(batch, "n e t h e r w o r l d  w i n t e r", 170, 520);
+		
+		defaultFont.setScale(0.35f);
+		if(titleAlpha[2] < 0) {
+			defaultFont.setColor(1f, 1f, 1f, 0);
+		} else {
+			defaultFont.setColor(1f, 1f, 1f, titleAlpha[2]);
+		}
+		defaultFont.draw(batch, "2012-2013 another perspective of ZUN's perfect cherry blossom", 200, 488);
+		defaultFont.draw(batch, "2.5d top down arena shooting game", 240, 477);
+		batch.end();
+	}
+	private void updateGameState(float tpf) {
+		updateGameVars(tpf);
+		switch(gameState) {
+			case TITLE:
+				updateGameTitleState(tpf);
+				drawBackground();
+				break;
+			case SCORE:
+				showScore();
+			case PLAY:
+				drawUI();
+				drawBackground();
+				
+				//Move camera to follow player
+				//camera.update(true);
+				camera.position.x = player.getX();
+				camera.position.y = player.getY();
+				
+				//Camera starts at CAM INIT ANGLE at the start of PLAY state.
+				//If the camera hasn't shifted down yet, shift it down
+				if(camAngle > CAM_TARG_ANGLE) {
+					float delta = camAngle;
+					camAngle -= (tpf) * (camAngle - CAM_TARG_ANGLE);
+					delta -= camAngle;
+					camera.rotate(Vector3.X, -delta);
+				}
+				//Update if not paused
+				if(!isPaused()) {
+					updateEntities(tpf);
+				}
+				//Draw the player
+				debugDrawPlayer();
+				
+				//Only check collisions every 2 frames
+				currentFrame++;
+				if(currentFrame % collisionRate == 0) checkCollisions();
+				updateEnemies(tpf);
+
+				updateBullets(tpf);
+				
+				updateItems(tpf);
+				break;
+		}
+		//If it's score state, allow clicking on the button to replay
+		//Disable moving the controller for the player
+		//Show end text and prompt to click again
+		/*if(gameState == GAME_STATE.SCORE) {
+			showScore();
+		}*/
+	}
+	private void showScore() {
+		batch.begin();
+		defaultFont.setColor(1f, 1f, 1f, 1.0f);
+		//font.setScale(1.8f);
+		defaultFont.draw(batch, "Your score: " + gameScore, 0, 540);
+		defaultFont.draw(batch, "Click to restart", 0, 160);
+		batch.end();
+	}
+	@Override
+	public void dispose() {
+	}
+	private void drawUI() {
+		batch.begin();
+		defaultFont.setColor(1f, 1f, 1f, 0.5f);
+		defaultFont.setScale(0.8f);
+		/*
+		font.draw(batch, "vector: " + player.getVector().toString(), 0, 160);
+		font.draw(batch, "destination: " + player.getDestination().toString(), 0, 150);
+		defaultFont.draw(batch, "direction: " + player.getDirection().toString(), 0, 140);
+		defaultFont.draw(batch, "rotation: " + player.getRotation().toString(), 0, 130);
+		font.draw(batch, "cursor1: " + cursor[0].toString(), 200, 160);
+		font.draw(batch, "cursor2: " + cursor[1].toString(), 200, 150);
+		*/
+		defaultFont.draw(batch, "LIFE  " + gameLife, SCREEN_WIDTH/2 - 400, SCREEN_HEIGHT-20);
+		defaultFont.draw(batch, "BOMB  " + gameBomb, SCREEN_WIDTH/2 - 400, SCREEN_HEIGHT-40);
+		defaultFont.draw(batch, "SCORE  " + gameScore, SCREEN_WIDTH/2, SCREEN_HEIGHT -20);
+		defaultFont.draw(batch, "POWER  " + player.getPower(), SCREEN_WIDTH/2, SCREEN_HEIGHT - 40);
+		defaultFont.draw(batch, "LEVEL  " + gameLevel, SCREEN_WIDTH/2 - 200, SCREEN_HEIGHT-20);
+		defaultFont.draw(batch, "TIME  " + Math.round(gameTime*100)/100f, SCREEN_WIDTH/2 + 200, SCREEN_HEIGHT-20);
+		batch.end();
+		
+		//Draw touch circles
+		//shapeRenderer = new ShapeRenderer();
+		uiRenderer.setColor(0.2f,0.2f,0.2f,0.2f);
+		uiRenderer.begin(ShapeType.Circle);
+		uiRenderer.circle(RIGHT_MOUSE_X - SCREEN_WIDTH / 2, RIGHT_MOUSE_Y - SCREEN_HEIGHT / 2, RIGHT_MOUSE_RADIUS);
+		uiRenderer.circle(LEFT_MOUSE_X - SCREEN_WIDTH / 2, LEFT_MOUSE_Y - SCREEN_HEIGHT / 2, LEFT_MOUSE_RADIUS);
+		uiRenderer.end();
+	}
+	private void drawBackground() {
+		shapeRenderer.begin(ShapeType.Box);
+		if(debug) {
+			//shapeRenderer.setColor(0.2f,0,0,1);
+			//Draw play field
+			
+			//shapeRenderer.box(-PLAYFIELD_WIDTH/2, -PLAYFIELD_HEIGHT/2, 10, PLAYFIELD_WIDTH, PLAYFIELD_HEIGHT, 10);
+			//shapeRenderer.box(-PLAYFIELD_WIDTH*2, -PLAYFIELD_HEIGHT*2, 40, PLAYFIELD_WIDTH*4, PLAYFIELD_HEIGHT*4, 40);
+			//shapeRenderer.setColor(0.5f,0.2f,0.0f,1);
+			//Draw tree
+			//shapeRenderer.box(-20,PLAYFIELD_HEIGHT*2,30,40,40,-400);
+			
+		}
+		shapeRenderer.end();
+	}
+	private void debugDrawPlayer() {
+		//Debug drawing
+		if(debug) {
+			shapeRenderer.setColor(1,1,1,1);
+			
+			//Draw player direction
+			shapeRenderer.begin(ShapeType.Line);
+			shapeRenderer.line(player.getX(), player.getY(), player.getDirection().x*30 + player.getX(), player.getDirection().y*30 + player.getY());
+			shapeRenderer.line(player.getX(), player.getY(), (player.getDirection().cpy()).nor().mul(20).x + player.getX(), (player.getDirection().cpy()).nor().mul(20).y + player.getY());
+			shapeRenderer.end();
+			shapeRenderer.begin(ShapeType.Box);
+			//Draw player destination
+			shapeRenderer.box(player.getDestination().x, player.getDestination().y, player.getDestination().z, 2,2,0);
+			//Draw player target
+			shapeRenderer.box(player.getTarget().x, player.getTarget().y, player.getTarget().z, 2,2,0);
+			//Draw player body
+			shapeRenderer.box(player.getX()-player.getSizeX()/2, player.getY()-player.getSizeY()/2, player.getZ()-player.getSizeZ()/2, player.getSizeX(), player.getSizeY(), player.getSizeZ());
+			shapeRenderer.box(player.getX()-player.getSizeX()/4, player.getY()+player.getSizeY()/4, -player.getSizeZ()/2, player.getSizeX()/2, player.getSizeY()/2, player.getSizeZ());
+			shapeRenderer.end();
+		}
+		//If player is out of bounds, kill it
+		if(player.getX() > PLAYFIELD_WIDTH/2 || player.getX() < -PLAYFIELD_WIDTH/2 || player.getY() > PLAYFIELD_HEIGHT/2 || player.getY() < -PLAYFIELD_HEIGHT/2) onPlayerDeath();
+	}
+	private void createEnemy() {
+		Enemy newEnemy = new Enemy();
+		//Ensure the enemy does not spawn on the player within 200 units, and that it spawns on the borders of the field
+		Vector3 spawnVector = new Vector3(((float)Math.random()-0.5f)*PLAYFIELD_WIDTH, ((float)Math.random()-0.5f)*PLAYFIELD_HEIGHT,0);
+		//50-50 chance for the vector to be aligned with x or y boundaries
+		if(Math.random() > 0.5) {
+			if(spawnVector.x >= 0) spawnVector.x = PLAYFIELD_WIDTH/2; else spawnVector.x = -PLAYFIELD_WIDTH/2;
+		} else {
+			if(spawnVector.y >= 0) spawnVector.y = PLAYFIELD_HEIGHT/2; else spawnVector.y = -PLAYFIELD_HEIGHT/2;
+		}
+		
+		while(spawnVector.cpy().sub(player.getVector()).len() < 200) {
+			spawnVector.set(((float)Math.random()-0.5f)*PLAYFIELD_HEIGHT, ((float)Math.random()-0.5f)*PLAYFIELD_HEIGHT,0);
+			//50-50 chance for the vector to be aligned with x or y boundaries
+			if(Math.random() > 0.5) {
+				if(spawnVector.x >= 0) spawnVector.x = PLAYFIELD_WIDTH/2; else spawnVector.x = -PLAYFIELD_WIDTH/2;
+			} else {
+				if(spawnVector.y >= 0) spawnVector.y = PLAYFIELD_HEIGHT/2; else spawnVector.y = -PLAYFIELD_HEIGHT/2;
+			}
+		}
+		newEnemy.setVector(spawnVector);
+		
+		//At enemy creation, set the target and destination to the player's vector
+		newEnemy.setTarget(player.getVector());
+		newEnemy.setDestination(player.getVector());
+		
+		//Set the enemy type
+		newEnemy.setType(Enemy.TYPE.FAIRY_STRAIGHT);
+		
+		//If the level is > 5, give a chance to spawn a circle firing enemy
+		if(gameLevel > 5) {
+			if(Math.random() > 0.5) {
+				newEnemy.setType(Enemy.TYPE.FAIRY_CIRCLE);
+			}
+		}
+		//If the level is > 10, give a chance to spawn spiral enemies
+		if(gameLevel > 10) {
+			if(Math.random() > 0.5) {
+				newEnemy.setType(Enemy.TYPE.FAIRY_SPIRAL);
+			}
+		}
+		
+		Node eNode = new Node();
+		switch(newEnemy.getType()) {
+			case FAIRY_STRAIGHT: 
+				eNode.setModel(enemyModel[ENEMY_FAIRY]);
+				break;
+			case FAIRY_CIRCLE:
+				eNode.setModel(enemyModel[ENEMY_FAIRY]);
+				break;
+			case FAIRY_SPIRAL: 
+				eNode.setModel(enemyModel[ENEMY_FAIRY]);
+				break;
+		}
+
+		enemies.add(newEnemy);
+		eNode.setTranslation(newEnemy.getVector());
+		newEnemy.setNode(eNode);
+		eNode.setScale(SCALE_ENEMY);
+	}
+	private void createItem(Item.TYPE type, Vector3 position) {
+		//Create a new item
+		Item newItem = new Item(type);
+		//Set its position to a copy of the one specified as an argument
+		//Presumably, it is where an enemy has died
+		newItem.setVector(position.cpy());
+		
+		//Prepare a 3d node for the item
+		Node iNode = new Node();
+		switch(type) {
+		case BOMB:
+			iNode.setModel(bombItemModel);
+			break;
+		case LIFE:
+			iNode.setModel(lifeItemModel);
+			break;
+		case POWER:
+			iNode.setModel(powerItemModel);
+			break;
+		case SCORE:
+			iNode.setModel(scoreItemModel);
+			break;
+		default:
+			iNode.setModel(scoreItemModel);
+			break;
+		}
+		
+		//Add this item to the list of items
+		items.add(newItem);
+		//Set the 3d node's vector to the item's vector
+		iNode.setTranslation(newItem.getVector());
+		//Link the object and node
+		newItem.setNode(iNode);
+		iNode.setScale(SCALE_ITEM);
+	}
+	//Update each item.  Each item should have a copy of the player's vector.
+	//Its update will recalculate its magnitude based on how far it is from the player
+	private void updateItems(float tpf) {
+		Iterator<Item> itemItr = items.iterator();
+		while(itemItr.hasNext()) {
+			Item curItem = itemItr.next();
+			if(!isPaused()) curItem.update(tpf);
+			
+			//If the item dies(times out), remove it
+			if(curItem.isDead()) {
+				itemItr.remove();
+				continue;
+			}
+			
+			//Set the item's destination to the player's position
+			curItem.setDestination(player.getVector());
+			
+			//Check if the item collides with the player
+			//Do different things depending on what kind of item it was
+			if(curItem.collidesWith(player)) {
+				switch(curItem.getType()) {
+				case BOMB:
+					gameBomb++;
+					break;
+				case LIFE:
+					gameLife += 10;
+					break;
+				case POWER:
+					player.setPower(player.getPower() + 1);
+					break;
+				case SCORE:
+					gameScore += 1;
+					break;
+				default:
+					break;
+				}
+				itemItr.remove();
+			}
+		}
+	}
+	private void updateEnemies(float tpf) {
+		//If there are less than gameLevel*2 enemies, give a chance to spawn a new enemy
+		if(Math.random() > 0.8f && enemies.size() <= gameLevel*2) {
+			createEnemy();
+		}
+		Iterator<Enemy> enem = enemies.iterator();
+		while(enem.hasNext()) {
+			Enemy curEnemy = enem.next();
+			//Update each enemy, if the game is not paused
+			if(!isPaused()) curEnemy.update(tpf);
+			
+			curEnemy.setTarget(player.getVector());
+			curEnemy.setDestination(player.getVector());
+			
+			//Shoot from enemy
+			handleEnemyFiring(curEnemy);
+			
+			if(debug) {
+				shapeRenderer.setColor(1,0,0,1);
+				shapeRenderer.begin(ShapeType.Box);
+		
+				shapeRenderer.box(curEnemy.getX()-curEnemy.getSizeX()/2, curEnemy.getY()-curEnemy.getSizeY()/2, -curEnemy.getSizeZ()/2, curEnemy.getSizeX(), curEnemy.getSizeY(), curEnemy.getSizeZ());
+				shapeRenderer.end();
+			}
+		}
+	}
+	
+	private void handleEnemyFiring(Enemy e) {
+		switch(e.getType()) {
+		case FAIRY_CIRCLE:
+			//Fire a circle of 8 vertices
+			Vector3 newTarg = e.getVector();
+			e.setTarget(newTarg.cpy().add(10,0,0));
+			fireBullet(e);
+			e.setTarget(newTarg.cpy().add(10,10,0));
+			fireBullet(e);
+			e.setTarget(newTarg.cpy().add(0,10,0));
+			fireBullet(e);
+			e.setTarget(newTarg.cpy().add(-10,10,0));
+			fireBullet(e);
+			e.setTarget(newTarg.cpy().add(-10,-10,0));
+			fireBullet(e);
+			e.setTarget(newTarg.cpy().add(-10,0,0));
+			fireBullet(e);
+			e.setTarget(newTarg.cpy().add(0,-10,0));
+			fireBullet(e);
+			e.setTarget(newTarg.cpy().add(10,-10,0));
+			fireBullet(e);
+			break;
+		case FAIRY_SPIRAL:
+			
+			break;
+		case FAIRY_STRAIGHT:
+			//If it is a straight fire fairy, give chance to fire straight at player
+			fireBullet(e);
+			break;
+		default:
+			break;
+		}
+	}
+	private void updateBullets(float tpf) {
+		Iterator<Bullet> bull = bullets.iterator();
+		while(bull.hasNext()) {
+			Bullet curBullet = bull.next();
+			if(curBullet.getX() > PLAYFIELD_WIDTH/2 || curBullet.getX() < -PLAYFIELD_WIDTH/2 || curBullet.getY() > PLAYFIELD_HEIGHT/2 || curBullet.getY() < -PLAYFIELD_HEIGHT/2) {
+				bull.remove();
+			}
+			//Update each bullet if the game is not paused
+			if(!isPaused()) curBullet.update(tpf);
+			
+			if(debug) {
+				shapeRenderer.setColor(1,0,0,1);
+				shapeRenderer.begin(ShapeType.Box);
+							
+				shapeRenderer.box(curBullet.getX()-curBullet.getSizeX()/2, curBullet.getY()-curBullet.getSizeY()/2, -curBullet.getSizeZ()/2, curBullet.getSizeX(), curBullet.getSizeY(), curBullet.getSizeZ());
+				shapeRenderer.end();
+			}
+		}
+		
+		Iterator<Bullet> shotIterator = shots.iterator();
+		while(shotIterator.hasNext()) {
+			Bullet curBullet = shotIterator.next();
+			if(curBullet.getX() > PLAYFIELD_WIDTH/2 || curBullet.getX() < -PLAYFIELD_WIDTH/2 || curBullet.getY() > PLAYFIELD_HEIGHT/2 || curBullet.getY() < -PLAYFIELD_HEIGHT/2) {
+				shotIterator.remove();
+			}
+			
+			//Update each bullet
+			if(!isPaused()) curBullet.update(tpf);
+			
+			if(debug) {
+				shapeRenderer.setColor(0,0.4f,0,1);
+				shapeRenderer.begin(ShapeType.Box);
+	
+				shapeRenderer.box(curBullet.getX()-curBullet.getSizeX()/2, curBullet.getY()-curBullet.getSizeY()/2, -curBullet.getSizeZ()/2, curBullet.getSizeX(), curBullet.getSizeY(), curBullet.getSizeZ());
+				shapeRenderer.end();
+			}
+		}
+	}
+	
+	private void checkCollisions() {
+		//Check shot-to-enemy collisions
+		Iterator<Enemy> ent = enemies.iterator();
+		while(ent.hasNext()) {
+			//To avoid illegalstateexceptions when removing
+			//entities, exit the inner loop after a collision
+			//is detected
+			boolean removeEnemy = false;
+
+			Enemy e = ent.next();
+			
+			//If a bomb was used, deal the appropriate damage to all enemies
+			if(bombing) {
+				e.onHit(BOMB_DAMAGE);
+				if(e.getHealth() <= 0) {
+					onEnemyKilled(e);
+					removeEnemy = true;
+				}
+			}
+			
+			//Check each enemy if it collides with the player.
+			//If the enemy touches the player, count it as a hit
+			//on the player and destroy the enemy
+			if(e.collidesWith(player)) {
+				removeEnemy = true;
+				onPlayerHit();
+			}
+			
+			//For each entity in the arraylist, check if each entity
+			//has a collision with each bullet
+			
+			Iterator<Bullet> shotIterator = shots.iterator();
+			while(shotIterator.hasNext()) {
+				if(removeEnemy) break;
+				
+				Bullet b = shotIterator.next();
+				
+				//If there is a collision, remove the shot
+				//Deal the appropriate damage to the enemy
+				//Check if the enemy dies here.
+				if(e.collidesWith(b)) {
+					e.onHit(b.getDamage());
+					//Check if the enemy's health reaches 0
+					if(e.getHealth() <= 0) {
+						onEnemyKilled(e);
+						removeEnemy = true;
+					}
+					shotIterator.remove();
+				}
+			}
+			if(removeEnemy) ent.remove();
+		}
+		
+		//Check bullet-to-player collisions
+		Iterator<Bullet> bulletIterator = bullets.iterator();
+		while(bulletIterator.hasNext()) {
+			Bullet b = bulletIterator.next();
+			
+			//If a bomb was used, destroy all bullets 
+			if(bombing) {
+				bulletIterator.remove();
+				continue;
+			}
+			
+			//If there is a collision, register hit on player
+			if(b.collidesWith(player)) {
+				bulletIterator.remove();
+				onPlayerHit();
+			}
+		}
+		
+		//Reset bombing to false at the end of this loop
+		if(bombing) {
+			bombing = false;
+			bombTimer = 0;
+		}
+	}
+	//Called when a bullet hits player
+	private void onPlayerHit() {
+		if(gameLife - 10 <= 0) 
+			onPlayerDeath();
+		else 
+			gameLife -= 10;
+	}
+	//Called when player health reaches 
+	private void onPlayerDeath() {
+		if(!debug) {
+			gameState = GAME_STATE.SCORE;
+			//Pause game on death
+			pauseGame();
+		}
+	}
+	//Called when a player shot hits an enemy
+	private void onEnemyKilled(Enemy e) {
+		//Increase the score
+		gameScore += 10;
+		
+		//Drop items
+		//Item type is decided by chance.
+		double rand = Math.random();
+		if(rand < 0.4) {
+			createItem(Item.TYPE.SCORE, e.getVector());
+		} else if(rand < 0.5) {
+			createItem(Item.TYPE.POWER, e.getVector());
+		} else if(rand < 0.55) {
+			createItem(Item.TYPE.LIFE, e.getVector());
+		} else if(rand < 0.6) {
+			createItem(Item.TYPE.BOMB, e.getVector());
+		}
+		//The remaining chance means that no item is spawned
+	}
+	//Called when, during game_state.score,
+	//the player chooses to replay
+	private void onGameReplay() {
+		camera.position.set(0,0,800);
+		
+		gameState = GAME_STATE.PLAY;
+		unpauseGame();
+		gameLife = 100;
+		gameBomb = 0;
+		bombTimer = 0;
+		bombReady = false;
+		gameScore = 0;
+		gameLevel = 1;
+		gameTime = 0;
+		player.setVector(0,0,0);
+		player.setDestination(0,0,0);
+		player.setTarget(0,0,0);
+		player.setDirection(0,0,0);
+		player.setRotation(0, 0, 0);
+		player.setPower(0);
+		enemies.clear();
+		bullets.clear();
+		shots.clear();
+		
+		stateChangeTime = 0;
+		fadeValue = 0;
+		fading = false;
+	}
+	private void updateGameVars(float tpf) {
+		//If game is showing the score, increment the score
+		//timer.  This score time must be over the SCORE_MIN time
+		//for the game to continue from the score screen.
+		if(!isPaused()) gameTime += Gdx.graphics.getDeltaTime();
+		else stateChangeTime += Gdx.graphics.getDeltaTime(); 
+			
+		if(((float)gameScore / (100*gameLevel))> 1) {
+			gameLevel++;
+		}
+		
+		//If the bomb is not ready, count up to the cooldown period
+		if(bombTimer >= BOMB_COOLDOWN) bombReady = true;
+		if(!bombReady && bombTimer < BOMB_COOLDOWN) bombTimer += tpf;
+	}
+	private void updateFade(float tpf) {
+		if(fading) {
+			fadeValue -= tpf;
+		} else {
+			fadeValue += tpf;
+		}
+		if(fadeValue > FADE_MAX) fadeValue = FADE_MAX;
+		if(fadeValue < FADE_MIN) fadeValue = FADE_MIN;
+		
+		int shadeNumber = (int)((fadeValue + FADE_MIN) / FADE_MAX * SKY_SHADES);
+		if(shadeNumber >= SKY_SHADES) shadeNumber = SKY_SHADES - 1;
+		skyModel.setMaterial(skyMatShade[shadeNumber]);
+	}
+	int currentFrame = 0;
+	int collisionRate = 2;
+	@Override
+	public void render() {		
+		Gdx.gl10.glClearColor(0, 0f, 0f, 1);
+		Gdx.gl10.glClear(GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT);
+		float tpf = Gdx.graphics.getDeltaTime();
+		
+		draw3D();
+		update(tpf);
+		camera.update(true);
+		shapeRenderer.setProjectionMatrix(camera.combined);
+
+		//Draw fade overlay
+		//Move this to the front when fill is corrected
+		//Currently fills at a constant alpha value, no fading		
+		
+		updateFade(tpf);
+	}
+	private void draw3D() {	
+		Gdx.gl10.glEnable(GL10.GL_DEPTH_TEST);
+		Gdx.gl10.glEnable(GL10.GL_TEXTURE_2D);
+		Gdx.gl10.glEnable(GL10.GL_COLOR_MATERIAL);
+
+		playerNode.setTranslation(player.getVector());
+		playerNode.setDestination(player.getDestination());
+		playerNode.setTarget(player.getTarget());
+		//If game is past splash screen, draw the backgroundNode
+		if(appState == APP_STATE.GAME) {
+			drawNode(backgroundNode);
+		}
+		if(gameState == GAME_STATE.PLAY) {
+			playerNode.update();
+			drawNode(playerNode);
+			
+			//Draw enemies
+			Iterator<Enemy> enem = enemies.iterator();
+			while(enem.hasNext()) {
+				Enemy curEnemy = enem.next();
+				if(curEnemy.getNode() != null) {
+					drawNode(curEnemy.getNode());
+				}
+			}
+			//End draw enemies
+			
+			//Draw bullets
+			Iterator<Bullet> bulletItr = bullets.iterator();
+			while(bulletItr.hasNext()) {
+				Bullet curBullet = bulletItr.next();
+				if(curBullet.getNode() != null) {
+					drawNode(curBullet.getNode());
+				}
+			}
+			//Draw shots
+			Iterator<Bullet> shotItr = shots.iterator();
+			while(shotItr.hasNext()) {
+				Bullet curBullet = shotItr.next();
+				if(curBullet.getNode() != null) {
+					drawNode(curBullet.getNode());
+				}
+			}
+			
+			//DrawItems
+			Iterator<Item> itemItr = items.iterator();
+			while(itemItr.hasNext()) {
+				Item curItem = itemItr.next();
+				if(curItem.getNode() != null) drawNode(curItem.getNode());
+			}
+		}
+		player.calcAngleToTarget();
+		playerNode.getTorso().setRotation(0, 0, player.getAngleToTarget());
+		//playerNode.getRArm().setRotation(0,0,90);
+
+		Gdx.gl10.glDisable(GL10.GL_DEPTH_TEST);
+		Gdx.gl10.glDisable(GL10.GL_TEXTURE_2D);
+		Gdx.gl10.glDisable(GL10.GL_COLOR_MATERIAL);
+	}
+	private void drawNode(Node node) {
+		Gdx.gl10.glPushMatrix();
+		
+		Gdx.gl10.glTranslatef(node.getTranslation().x, node.getTranslation().y, node.getTranslation().z);
+		Gdx.gl10.glRotatef(node.getRotation().x, 1, 0, 0);
+		Gdx.gl10.glRotatef(node.getRotation().y, 0, 1, 0);
+		Gdx.gl10.glRotatef(node.getRotation().z, 0, 0, 1);
+		Gdx.gl10.glScalef(node.getScale().x, node.getScale().y, node.getScale().z);
+		
+		if(node.getModel() != null) node.getModel().render();
+		
+		Iterator<Node> nodeItr = node.children.iterator();
+		while(nodeItr.hasNext()) {
+			drawNode(nodeItr.next());
+		}
+		
+		Gdx.gl10.glPopMatrix();
+	}
+	private void handleKeyInput() {
+		if(Gdx.input.isKeyPressed(Keys.A)) {
+			player.setMagnitude(Player.MAX_MAGNITUDE/2);
+			player.setDestination(player.getDestination().cpy().add(-Player.MAX_MAGNITUDE,0,0));
+		}
+		if(Gdx.input.isKeyPressed(Keys.D)){
+			player.setMagnitude(Player.MAX_MAGNITUDE/2);
+			player.setDestination(player.getDestination().cpy().add(Player.MAX_MAGNITUDE,0,0));
+		}
+		if(Gdx.input.isKeyPressed(Keys.W)){
+			player.setMagnitude(Player.MAX_MAGNITUDE/2);
+			player.setDestination(player.getDestination().cpy().add(0,Player.MAX_MAGNITUDE,0));
+		}
+		if(Gdx.input.isKeyPressed(Keys.S)) {
+			player.setMagnitude(Player.MAX_MAGNITUDE/2);
+			player.setDestination(player.getDestination().cpy().add(0,-Player.MAX_MAGNITUDE,0));
+		}
+		//Debug: press q to gain power
+		if(Gdx.input.isKeyPressed(Keys.Q)) {
+			player.setPower(player.getPower()+1);
+		}
+		//Debug: press e to bomb
+		if(Gdx.input.isKeyPressed(Keys.E)) {
+			if(gameBomb >= 1 && !bombing && bombReady) {
+				bombing = true;
+				bombReady = false;
+				gameBomb--;
+			}
+		}
+		if(Gdx.input.isKeyPressed(Keys.J)) player.getTarget().add(-1,0,0);
+		if(Gdx.input.isKeyPressed(Keys.L)) player.getTarget().add(1,0,0);
+		if(Gdx.input.isKeyPressed(Keys.I)) player.getTarget().add(0,1,0);
+		if(Gdx.input.isKeyPressed(Keys.K)) player.getTarget().add(0,-1,0);
+		
+		if(Gdx.input.isKeyPressed(Keys.SPACE)) {
+			//player.setTarget(Gdx.input.getX() - Gdx.graphics.getWidth()/2, -Gdx.input.getY() + Gdx.graphics.getHeight()/2, 0);
+			if(player.isReadyToFire()) {
+				fireBullet(player);
+				player.fire();
+			}
+		}
+	}
+	private void handleTouchInput() {
+		switch(appState) {
+			case SPLASH:
+				if(Gdx.input.isTouched()) {
+					if(!splashScreenToEnd){
+						splashScreenToEnd = true;
+						fade();
+					}
+				}
+				break;
+			case GAME:
+				unfade();
+				switch(gameState) {
+					case TITLE:
+						handleTitleTouchInput();
+						break;
+					case PLAY:
+						handlePlayTouchInput();
+						break;
+					case SCORE:
+						handleScoreTouchInput();
+						break;
+				}
+				break;
+		}
+	}
+	private void handleTitleTouchInput() {
+		if(Gdx.input.isTouched() && stateChangeTime > STATECHANGE_MIN_TIME) {
+			unpauseGame();
+			gameState = GAME_STATE.PLAY;
+			stateChangeTime = 0;
+		}
+	}
+	private void handlePlayerFiring() {
+		//Default: Shoot 
+		fireBullet(player);
+		playerNode.setFiring(true);
+		if(player.getNumOfShots() > 1) {
+			Vector3 origTarg = player.getTarget().cpy();
+			
+			//Get the normalized vector from player to target
+			Vector3 targDir = origTarg.cpy().sub(player.getVector());
+			targDir.nor();
+			
+			//Change this angle to set new targets
+			float angle = player.getAngleToTarget();
+			
+			//This is the resulting angle
+			float newAngle = 0;
+			
+			//Change the shot magnitude for outer shots
+			float originalMag = player.getShotMagnitude();
+			
+			//Increases in power will increase the player's number of shots
+			//fired per cycle.  Loop for each shot to make a spray of shots
+			for(int i = 1; i < player.getNumOfShots(); i++) {
+				newAngle = (angle - ((i - player.getNumOfShots()/2f) * 10)) * 6.2831f / 360 + 1.5707f;
+				newAngle += (Math.random()-0.5f)*i/2f;
+				player.setShotMagnitude(originalMag/i);
+				player.setTarget(player.getVector().cpy().add(FastMath.cos(newAngle), FastMath.sin(newAngle), 0));
+				fireBullet(player);
+			}
+			player.setShotMagnitude(originalMag);
+			player.setTarget(origTarg);
+		}
+	}
+	private void handlePlayTouchInput() {
+		//Test if there is any contact in the left touch field
+		boolean isMoving = false;
+		playerNode.setFiring(false);
+		if(Gdx.input.isTouched()) {
+			cursor[0].x = Gdx.input.getX(0) - SCREEN_WIDTH / 2;
+			cursor[0].y = -(Gdx.input.getY(0) - SCREEN_HEIGHT / 2);
+			
+			cursor[1].x = Gdx.input.getX(1) - SCREEN_WIDTH / 2;
+			cursor[1].y = -(Gdx.input.getY(1) - SCREEN_HEIGHT / 2);
+			
+			//shapeRenderer = new ShapeRenderer();
+			//shapeRenderer.translate(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, 0);
+			uiRenderer.setColor(0f,0.3f,0,1);
+
+			//Test both cursors whether they are in the movement fields
+			for(int currentCursor = 0; currentCursor < MAX_CURSORS; currentCursor++) {
+				if(Gdx.input.isTouched(currentCursor)) {
+					Vector3 mouseDiffRight = cursor[currentCursor].cpy().sub(RIGHT_MOUSE.x - SCREEN_WIDTH / 2, RIGHT_MOUSE.y - SCREEN_HEIGHT / 2, 0);
+					//If cursor is within right mouse
+					
+					Vector3 mouseDiffLeft = cursor[currentCursor].cpy().sub(LEFT_MOUSE.x - SCREEN_WIDTH / 2, LEFT_MOUSE.y - SCREEN_HEIGHT / 2, 0);
+					//If cursor is within left mouse
+					
+					//If within right
+					if(Math.abs(mouseDiffRight.len()) < RIGHT_MOUSE_RADIUS) {
+						player.setTarget(player.getVector().cpy().add(mouseDiffRight));
+						handlePlayerFiring();
+						uiRenderer.setColor(1,0,0,1);
+					}
+					//If cursor is within left mouse
+					if(Math.abs(mouseDiffLeft.len()) < LEFT_MOUSE_RADIUS) {
+						isMoving = true;
+						player.setMagnitude((mouseDiffLeft.len()/LEFT_MOUSE_RADIUS) * player.MAX_MAGNITUDE);
+						player.setDestination(player.getVector().cpy().add(mouseDiffLeft));
+						uiRenderer.setColor(1,0,0,1);
+					}
+					
+					//Draw contact point circle
+					uiRenderer.begin(ShapeType.Circle);
+					uiRenderer.circle(cursor[currentCursor].x, cursor[currentCursor].y, 15);
+					uiRenderer.end();
+				}
+			}
+		}
+		if(!isMoving) {
+			player.setMagnitude(0); 
+			player.setDestination(player.getVector());
+		}
+	}
+	private void handleScoreTouchInput() {
+		//If the screen is touched during the 
+		//score display phase, replay the game
+		if(Gdx.input.isTouched() && stateChangeTime > STATECHANGE_MIN_TIME) {
+			onGameReplay();
+		}
+	}
+	private void fireBullet(Entity source) {
+		if(source.isReadyToFire()) {
+			Bullet newBull = new Bullet();
+			newBull.setVector(source.getVector());
+			newBull.setDirection(new Vector3().set(source.getTarget()).sub(source.getVector()));
+			
+			//Set bullet's magnitude based on source
+			newBull.setMagnitude(source.getShotMagnitude());
+			
+			//Make new scene graph node to link to bullet abstraction
+			Node bulletNode = new Node();
+			//Link the bulletnode to the new bullet abstraction
+			newBull.setNode(bulletNode);
+
+			//Depending on the source, the bullet is either a shot or bullet
+			if(source instanceof Player) {
+				shots.add(newBull);
+				
+				//Change the shot model depending on player power
+				switch(player.getPowerLevel()) {
+					case 0: bulletNode.setModel(shotModel[SHOT_0]); break;
+					case 1: bulletNode.setModel(shotModel[SHOT_1]); break;
+					case 2: bulletNode.setModel(shotModel[SHOT_2]); break;
+					case 3: bulletNode.setModel(shotModel[SHOT_3]); break;
+					default: bulletNode.setModel(shotModel[SHOT_0]); 
+				}
+				bulletNode.setTranslation(newBull.getVector());
+				bulletNode.setScale(SCALE_SHOT);
+			} else if(source instanceof Enemy) {
+				//Change details about the bullet depending on what fired it
+				switch(((Enemy)source).getType()) {
+					case FAIRY_CIRCLE:
+						bulletNode.setModel(bulletModel[BULLET_TALISMAN]);
+						break;
+					case FAIRY_SPIRAL:
+						bulletNode.setModel(bulletModel[BULLET_TALISMAN]);
+						break;
+					case FAIRY_STRAIGHT:
+						bulletNode.setModel(bulletModel[BULLET_BALL]);
+						break;
+					default:
+						break;
+				}
+				bullets.add(newBull);
+				
+				bulletNode.setTranslation(newBull.getVector());
+				bulletNode.setScale(SCALE_BULLET);
+
+			}
+			source.fire();
+		}
+	}
+	@Override
+	public void resize(int width, int height) {
+	}
+	@Override
+	public void pause() {
+	}
+	@Override
+	public void resume() {
+	}
+	private void pauseGame() {
+		gamePaused = true;
+	}
+	private void unpauseGame() {
+		gamePaused = false;
+	}
+	private boolean isPaused() {
+		return gamePaused;
+	}
+	private void fade() {
+		fading = true;
+	}
+	private void unfade() {
+		fading = false;
+	}
+}

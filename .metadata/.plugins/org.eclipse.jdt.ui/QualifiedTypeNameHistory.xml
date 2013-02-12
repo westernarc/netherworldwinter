@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="com.badlogic.gdx.Graphics"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.Camera"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.PerspectiveCamera"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.loaders.obj.ObjLoader"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.loaders.wavefront.ObjLoader"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.Texture.TextureFilter"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.model.SubMesh"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.GL10"/>
+<fullyQualifiedTypeName name="org.lwjgl.util.glu.GLU"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.model.skeleton.SkeletonSubMesh"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.loaders.g3d.G3dLoader"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.graphics.Node"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g2d.Sprite"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.Gdx"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.OrthographicCamera"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.decals.DecalBatch"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.decals.Decal"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g2d.TextureRegion"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.Yuurei.APP_STATE"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.loaders.ModelLoaderRegistry"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.keyframed.KeyframedModel"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.model.keyframe.KeyframedModel"/>
+<fullyQualifiedTypeName name="com.westernarc.graphics.AnimNode"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.graphics.AnimNode"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g2d.ParticleEmitter"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.utils.Array"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g2d.ParticleEffect"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.loaders.g3d.chunks.G3dExporter"/>
+<fullyQualifiedTypeName name="com.badlogic.gdx.graphics.g3d.model.still.StillModel"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.entities.Entity"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.entities.Bullet"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.entities.Enemy"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.graphics.PlayerNode"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.entities.Player"/>
+<fullyQualifiedTypeName name="com.westernarc.util.FastMath"/>
+<fullyQualifiedTypeName name="com.westernarc.yuurei.entities.Enemy.TYPE"/>
+</qualifiedTypeNameHistroy>

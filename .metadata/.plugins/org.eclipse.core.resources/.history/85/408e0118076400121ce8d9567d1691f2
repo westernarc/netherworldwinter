@@ -1,0 +1,187 @@
+package com.westernarc.yuurei.graphics;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g3d.loaders.ModelLoaderRegistry;
+import com.badlogic.gdx.graphics.g3d.loaders.g3d.chunks.G3dExporter;
+import com.badlogic.gdx.graphics.g3d.materials.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.materials.Material;
+import com.badlogic.gdx.graphics.g3d.materials.TextureAttribute;
+import com.badlogic.gdx.graphics.g3d.model.Model;
+import com.badlogic.gdx.math.Vector3;
+
+public class PlayerNode extends Node {
+	AnimNode torso, lArm, rArm;
+	
+	private static final float changeFactor = 1.1f;
+	private static final float resetRate = 0.4f;
+	
+	//Largest angle rotation can be
+	private static final float rotateMax = 20;
+	//Used for arm rotation when firing
+	private static final float armRotateMax = 70;
+	private static final float armRotateMin = 10;
+	private static final float armRotateRate = 5;
+	
+	//Farthest away that input will matter for
+	//destination and rotation calculations
+	float inputMax = 100;
+	
+	//Model floats up and down
+	float floatMax = 0.5f; 
+	float floatMin = 0f;
+	float floatRate = 0.005f;
+	float currentFloat;
+	boolean rising;
+	
+	
+	private Vector3 destination;
+	private Vector3 target;
+	
+	//Stores whether or not the player is firing bullets
+	private boolean firing;
+	
+	public boolean isFiring() {
+		return firing;
+	}
+	public void setFiring(boolean f) {
+		firing = f;
+	}
+	
+	public Vector3 getTarget() {
+		return target;
+	}
+
+	public void setTarget(Vector3 target) {
+		this.target = target;
+	}
+
+	public Vector3 getDestination () {
+		return destination;
+	}
+
+	public void setDestination (Vector3 destination) {
+		this.destination = destination;
+	}
+
+	public PlayerNode() {
+		destination = new Vector3();
+		lArm = new AnimNode(0,18);
+		rArm = new AnimNode(0,18);
+		torso = new AnimNode(1,28);
+		
+		Texture texture = new Texture(Gdx.files.internal("textures/yuyuko.png"));
+		Material mat = new Material("mat", new TextureAttribute(texture, 0, "s_tex"), new ColorAttribute(Color.WHITE, ColorAttribute.diffuse));
+
+		for(int i = 1; i <= 28; i++) {
+			torso.models[i] = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/animtorso/yuanimtorso" + i + ".g3d"));
+			//G3dExporter.export(torso.models[i], Gdx.files.local("models/animtorso/yuanimtorso"+i+".g3d"));
+			torso.models[i].setMaterial(mat);
+		}
+		torso.setCycleTime(1/30f);
+		addChild(torso);
+		/*
+		for(int i = 0; i <= 18; i++) {
+			lArm.models[i] = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/animarml/yuanimarmL" + i + ".g3dt"));
+			lArm.models[i].setMaterial(mat);
+		}
+		lArm.setCycleTime(1/30f);*/
+		lArm.model = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/animarml/yuanimarmL" + 0 + ".g3dt"));
+		torso.addChild(lArm);
+		/*
+		for(int i = 0; i <= 18; i++) {
+			rArm.models[i] = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/animarmr/yuanimarmR" + i + ".g3dt"));
+			rArm.models[i].setMaterial(mat);
+		}
+		rArm.setCycleTime(1/30f);*/
+		
+		rArm.model = ModelLoaderRegistry.loadStillModel(Gdx.files.internal("models/animarmr/yuanimarmR" + 0 + ".g3dt"));
+		torso.addChild(rArm);
+		
+		lArm.translate(-0.4f,-0.2f,0);
+		lArm.rotate(0,-60,0);
+		rArm.rotate(0,60,0);
+		rArm.translate(0.4f,-0.2f,0);
+		
+		currentFloat = 0;
+		rising = true;
+	}
+
+	public void setLModel(Model m) {
+		lArm.setModel(m);
+	}
+	public void setRModel(Model m) {
+		rArm.setModel(m);
+	}
+	public void setTModel(Model m) {
+		torso.setModel(m);
+	}
+	
+	public Node getTorso() {
+		return torso;
+	}
+	public Node getRArm() {
+		return rArm;
+	}
+	public Node getLArm() {
+		return lArm;
+	}
+	
+	public void update(float tpf) {
+		if(rotation.x > 0) rotate(-resetRate,0,0);
+		if(rotation.x < 0) rotate(resetRate,0,0);
+		if(rotation.y > 0) rotate(0,-resetRate,0);
+		if(rotation.y < 0) rotate(0,resetRate,0);
+		if(rotation.z > 0) rotate(0,0,-resetRate);
+		if(rotation.z < 0) rotate(0,0,resetRate);
+		
+		//Handle floating
+		if(!rising) {
+			torso.translate(0, 0, -floatRate);
+		} else {
+			torso.translate(0, 0, floatRate);
+		}
+		if(torso.getTranslation().z > floatMax) rising = false;
+		if(torso.getTranslation().z < floatMin) rising = true;
+		
+		//Handle destination calculation and model rotation
+		Vector3 diff = destination.cpy().sub(translation);
+		float dist = diff.len();
+		diff = diff.nor();
+		//Rotate by the destination vector
+		rotate(-diff.y,diff.x,0);
+		
+		//Rotate the arm depending on whether or not the player
+		//is firing
+		if(firing) {
+			if(rArm.getRotation().z < armRotateMax) rArm.rotate(0,0,armRotateRate);
+			
+		} else {
+			if(rArm.getRotation().z > armRotateMin) rArm.rotate(0,0,-armRotateRate/2);
+		}
+		
+		torso.update(tpf);/*
+		lArm.update(tpf);
+		rArm.update(tpf);*/
+	}
+	
+	@Override
+	public void rotate(float x, float y, float z) {
+		//Rotate the arms at a different rate than the torso
+		//Rotates all of the body
+		Vector3 vec = new Vector3(x,y,z);
+		
+		//If the rotation would put the total rotation over the max,
+		//set the to-rotate value to 0
+		if(rotation.x > rotateMax && vec.x > 0) vec.x = 0;
+		if(rotation.x < -rotateMax && vec.x < 0) vec.x = 0;
+		if(rotation.y > rotateMax && vec.y > 0) vec.y = 0;
+		if(rotation.y < -rotateMax && vec.y < 0) vec.y = 0;
+		
+		super.rotate(vec.x,vec.y,vec.z);
+		vec.mul(changeFactor);
+		lArm.rotate(vec);
+		rArm.rotate(vec);
+	}
+}

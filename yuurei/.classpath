@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry exported="true" kind="lib" path="libs/gdx.jar" sourcepath="libs/gdx-sources.jar"/>
+	<classpathentry kind="lib" path="C:/eclipse/workspace/libgdx-0.9.6/gdx-backend-lwjgl.jar"/>
+	<classpathentry kind="lib" path="C:/eclipse/workspace/libgdx-0.9.6/gdx-backend-lwjgl-natives.jar"/>
+	<classpathentry kind="lib" path="C:/eclipse/workspace/libgdx-0.9.6/gdx-natives.jar"/>
+	<classpathentry kind="lib" path="C:/eclipse/workspace/libgdx/extensions/model-loaders/model-loaders/libs/JOpenCTM-1.0.jar"/>
+	<classpathentry kind="lib" path="C:/eclipse/workspace/lwjgl_applet-2.8.5/applet/basic/lwjgl_util_applet.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

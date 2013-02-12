@@ -1,0 +1,100 @@
+package com.westernarc.yuurei.entities;
+
+import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.westernarc.yuurei.graphics.Node;
+
+public class Item extends Entity {
+	//Items will just sit there and move towards the player
+	//Their speed is determined by how far the player is
+	//If the player is far away, their speed will be near 0
+	
+	//Item type enum
+	public enum TYPE {
+		SCORE, LIFE, BOMB, POWER
+	}
+	private TYPE type;
+	
+	//Items have a life time and 3 phases.
+	//The spawn, expansion, and rest phase, 
+	//the fading phase, where it slowly scales smaller,
+	//and the dead phase, where it marks itself as dead.
+	private float lifeTime;
+	private boolean fading;
+	private boolean dead;
+	
+	//Time after which item will fade
+	private static final float FADE_TIME = 4; 
+	private static final float DIE_TIME = FADE_TIME + 2;
+	private static final float FADE_RATE = -0.1f;
+	private static final float EXPAND_RATE = 0.4f;
+	
+	//Scale that the item will expand to and rest at
+	private static final float SCALE_MAX = 0.25f;
+	
+	//Item gather radius
+	private static final float GATHER_RADIUS = 100;
+	
+	public Item() {
+		setVector(0,0,0);
+		setRotation(0,0,0);
+		setSize(5);
+		setDirection(0,1,0);
+		setMagnitude(0.1f);
+		
+		lifeTime = 0;
+		fading = false;
+		dead = false;
+		type = TYPE.SCORE;
+	}
+	
+	public Item(TYPE t) {
+		this();
+		type = t;
+	}
+	
+	public TYPE getType() {
+		return type;
+	}
+	@Override
+	public void update(float tpf) {
+		//Move at object velocity
+		super.update(tpf);
+		
+		//Update timers
+		lifeTime += tpf;
+		
+		if(!fading && lifeTime >= FADE_TIME) {
+			fading = true;
+		}
+		
+		//If the item is dead, set the 'dead' marker to true
+		//Set the dimensions to 0 so that it can no longer make collisions
+		if(!dead && lifeTime >= DIE_TIME) {
+			dead = true;
+			setSize(0);
+		}
+		//Modify the node based on whether or not it is fading or dying
+		if(getSprite() != null) {
+			Sprite sprite = getSprite();
+			
+			//If the item is fading, scale it down
+			//Otherwise, scale it up to SCALE_MAX
+			if(fading && sprite.getScaleX() > 0) {
+				sprite.scale(FADE_RATE * tpf);
+				if(sprite.getScaleX() < 0) sprite.setScale(0);
+			} else {
+				if(sprite.getScaleX() < SCALE_MAX) sprite.scale(EXPAND_RATE * tpf);
+			}
+		}
+		
+		//Check if near player
+		//If the player comes within the gather radius, set the 
+		//item's speed higher
+		if(destination.cpy().sub(vector).len() < GATHER_RADIUS) setMagnitude(250f);
+	}
+	
+	//Use to get whether or not the item is dead
+	public boolean isDead() {
+		return dead;
+	}
+}

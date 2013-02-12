@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="gen"/>
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/yuurei"/>
+	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
+	<classpathentry kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
+	<classpathentry exported="true" kind="lib" path="/yuurei/libs/gdx.jar" sourcepath="/yuurei/libs/gdx-sources.jar"/>
+	<classpathentry exported="true" kind="lib" path="libs/gdx-backend-android.jar" sourcepath="libs/gdx-backend-android-sources.jar"/>
+	<classpathentry kind="lib" path="C:/eclipse/workspace/libgdx-0.9.6/sources/gdx-sources.jar"/>
+	<classpathentry kind="lib" path="C:/eclipse/workspace/yuurei/yuurei/libs/model-loaders.jar"/>
+	<classpathentry kind="output" path="bin/classes"/>
+</classpath>

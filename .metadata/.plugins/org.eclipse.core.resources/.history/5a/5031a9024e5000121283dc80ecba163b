@@ -1,0 +1,192 @@
+package com.westernarc.yuurei.entities;
+
+import com.badlogic.gdx.math.Vector3;
+
+public abstract class Entity {
+	protected Vector3 vector = new Vector3();
+	protected Vector3 dimensions = new Vector3();
+	protected Vector3 rotation = new Vector3();
+	
+	//Direction of movement
+	protected Vector3 direction = new Vector3();
+	protected float magnitude;
+	
+	//Target to aim at
+	protected Vector3 target = new Vector3();
+	//Target to move towards
+	protected Vector3 destination = new Vector3();
+	
+	//Shot delay and timer
+	protected float SHOT_DELAY = 2f;
+	protected float shotTimer;
+	protected boolean readyToFire;
+	
+	//Angle of Z rotation
+	protected float angle;
+	protected float angleToTarget;
+	
+	public float getAngle() {
+		return angle;
+	}
+	public float getAngleToTarget() {
+		return angleToTarget;
+	}
+	public boolean isReadyToFire() {
+		return readyToFire;
+	}
+	//Starts fire timer.  Used to create delay between shots
+	public void fire() {
+		readyToFire = false;
+		shotTimer = 0;
+	}
+	
+	public Vector3 getDestination() {
+		return destination;
+	}
+	public void setDestination(float x, float y, float z) {
+		if(destination == null) destination = new Vector3();
+		destination.set(x, y, z);
+		setDirection(destination.cpy().sub(vector));
+		
+		//When a destination is set, calculate the angle to the destination
+		angle = 0;
+		if(direction.y > 0) {
+			angle = -(float)Math.asin(direction.x) * 360 / 6.2831f;
+		} else {
+			angle = (float)(Math.asin(direction.x) + 3.1415) * 360 / 6.2831f;
+		}
+		setRotation(0,0,angle);
+	}
+	public void setDestination(Vector3 vec) {
+		setDestination(vec.x, vec.y, vec.z);
+	}
+	public Vector3 getTarget() {
+		return target;
+	}
+	public void setTarget(float x, float y, float z) {
+		if(target == null) target = new Vector3();
+		target.set(x,y,z);
+	}
+	public void setTarget(Vector3 vec) {
+		target = vec;
+		angleToTarget = 0;
+		Vector3 vecToTarget = target.cpy().sub(vector);
+		if(vecToTarget.y > 0) {
+			angleToTarget = -(float)Math.asin(vecToTarget.x) * 360 / 6.2831f;
+		} else {
+			angleToTarget = (float)(Math.asin(vecToTarget.x) + 3.1415) * 360 / 6.2831f;
+		}
+	}
+	public Vector3 getVector() {
+		return vector;
+	}
+	public float getX() {
+		return vector.x;
+	}
+	public float getY() {
+		return vector.y;
+	}
+	public float getZ() {
+		return vector.z;
+	}
+	public float getSizeX() {
+		return dimensions.x;
+	}
+	public float getSizeY() {
+		return dimensions.y;
+	}
+	public float getSizeZ() {
+		return dimensions.z;
+	}
+	public float getRotX() {
+		return rotation.x;
+	}
+	public float getRotY() {
+		return rotation.y;
+	}
+	public float getRotZ() {
+		return rotation.z;
+	}
+	public Vector3 getRotation() {
+		return rotation;
+	}
+	public Vector3 getVelocity() {
+		return direction.cpy().mul(magnitude);
+	}
+	public void setVector(float x, float y, float z) {
+		if(vector == null) vector = new Vector3();
+		vector.set(x,y,z);
+	}
+	public void setVector(Vector3 vec) {
+		setVector(vec.x, vec.y , vec.z);
+	}
+	public void move(float dx, float dy, float dz) {
+		vector.add(dx,dy,dz);
+	}
+	public void move(Vector3 vec) {
+		move(vec.x, vec.y, vec.z);
+	}
+	public void rotate(float rx, float ry, float rz) {
+		rotation.add(rx, ry, rz);
+		if(direction == null) direction = new Vector3();
+		setDirection(-(float)Math.sin((rotation.z % 360 * (6.283f/360))), (float)Math.cos(rotation.z % 360 * (6.283f/360)), direction.z);
+		//direction.set(direction.rot(new Matrix4(new Quaternion(0,0,1,rz))));
+	}
+	public void setRotation(float x, float y, float z) {
+		if(rotation == null) rotation = new Vector3();
+		rotation.set(x,y,z);
+	}
+	public void setDimensions(float x, float y, float z) {
+		if(dimensions == null) dimensions = new Vector3();
+		dimensions.set(x, y, z);
+	}
+	public Vector3 getDirection() {
+		return direction;
+	}
+	public void setDirection(float dirx, float diry, float dirz) {
+		if(direction == null) direction = new Vector3();
+		direction.set(dirx, diry, dirz);
+		/*if(direction.len() > 1) */
+		direction.nor();
+	}
+	public void setDirection(Vector3 vec) {
+		setDirection(vec.x, vec.y, vec.z);
+	}
+	public float getMagnitude() {
+		return magnitude;
+	}
+	public void setMagnitude(float mag) {
+		magnitude = mag;
+	}
+	public void moveForward() {
+		setVector(vector.add(getVelocity()));
+	}
+	public void moveBackward() {
+		setVector(vector.add(getVelocity().mul(-1)));
+	}
+	public void update(float tpf) {
+		//Update all members
+		if(!readyToFire) {
+			shotTimer += tpf;
+			if(shotTimer > SHOT_DELAY) readyToFire = true;
+		}
+		//Move by the current velocity
+		Vector3 vecDifference = destination.cpy().sub(vector.cpy());
+		Vector3 movement = getVelocity().mul(tpf);
+		
+		//As the object moves closer to its destination, decrease
+		//the amount moved
+		if(vecDifference.len() > movement.len()) {
+			move(getVelocity().mul(tpf));
+		} else {
+			move(getVelocity().mul(tpf).cpy().nor().mul(vecDifference.len()*0.5f));
+		}
+	}
+	public boolean collidesWith(Entity ent)  {
+		boolean collides = false;
+		//Circle collision
+		boolean contact = Math.abs((ent.getVector().cpy().sub(vector)).len()) < 5 ? true : false;
+		if(contact) collides = true;
+		return collides;
+	}
+}

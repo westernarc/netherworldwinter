@@ -1,0 +1,36 @@
+package com.westernarc.graphics;
+
+import com.badlogic.gdx.graphics.g3d.model.still.StillModel;
+
+public class AnimNode extends Node {
+	//Max and min frames of animation
+	int maxFrame;
+	int minFrame;
+	
+	public int curFrame;
+	public float cycleTime = 1;
+	float timer;
+	
+	public StillModel[] models;
+	public AnimNode() {
+		this(0,1);
+	}
+	public AnimNode(int min, int max) {
+		maxFrame = max;
+		minFrame = min;
+		models = new StillModel[maxFrame + minFrame];
+		curFrame = minFrame;
+	}
+	public void update(float tpf) {
+		timer += tpf;
+		if(timer > cycleTime) {
+			timer = 0;
+			curFrame++;
+			if(curFrame > maxFrame) {
+				curFrame = minFrame;
+			}
+		}
+		
+		model = models[curFrame];
+	}
+}
