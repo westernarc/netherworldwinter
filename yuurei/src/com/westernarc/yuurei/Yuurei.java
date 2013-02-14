@@ -903,7 +903,7 @@ public class Yuurei implements ApplicationListener {
 	}
 	
 	int[] indentation = {0, 7, 14, 21, 28, 35, 42, 49, 56};
-	float lifeAlpha, bombAlpha, powerAlpha, scoreAlpha;
+	float lifeAlpha, bombAlpha, powerAlpha, scoreAlpha, leftRad, rightRad;
 	private void drawUI(float tpf) {
 		batch.begin();
 		if(lifeAlpha < 0.5f) lifeAlpha = 0.5f; else if(lifeAlpha > 0.5f) lifeAlpha -= tpf;
@@ -951,15 +951,17 @@ public class Yuurei implements ApplicationListener {
 		//Draw touch circles
 		uiRenderer.setColor(0.7f,0.7f,0.7f,1);
 		uiRenderer.begin(ShapeType.Circle);
-		uiRenderer.circle(RIGHT_MOUSE_X - SCREEN_WIDTH / 2, RIGHT_MOUSE_Y - SCREEN_HEIGHT / 2, RIGHT_MOUSE_RADIUS);
+		if(leftRad < LEFT_MOUSE_RADIUS) leftRad += tpf*400;
+		if(rightRad < BOMB_MOUSE_RADIUS) rightRad += tpf* 200;
+		uiRenderer.circle(RIGHT_MOUSE_X - SCREEN_WIDTH / 2, RIGHT_MOUSE_Y - SCREEN_HEIGHT / 2, leftRad);
 		//uiRenderer.circle(RIGHT_MOUSE_X - SCREEN_WIDTH / 2, RIGHT_MOUSE_Y - SCREEN_HEIGHT / 2, RIGHT_MOUSE_RADIUS-1);
 		//uiRenderer.circle(RIGHT_MOUSE_X - SCREEN_WIDTH / 2, RIGHT_MOUSE_Y - SCREEN_HEIGHT / 2, RIGHT_MOUSE_RADIUS-2);
 
-		uiRenderer.circle(LEFT_MOUSE_X - SCREEN_WIDTH / 2, LEFT_MOUSE_Y - SCREEN_HEIGHT / 2, LEFT_MOUSE_RADIUS);
+		uiRenderer.circle(LEFT_MOUSE_X - SCREEN_WIDTH / 2, LEFT_MOUSE_Y - SCREEN_HEIGHT / 2, leftRad);
 		//uiRenderer.circle(LEFT_MOUSE_X - SCREEN_WIDTH / 2, LEFT_MOUSE_Y - SCREEN_HEIGHT / 2, LEFT_MOUSE_RADIUS-1);
 		//uiRenderer.circle(LEFT_MOUSE_X - SCREEN_WIDTH / 2, LEFT_MOUSE_Y - SCREEN_HEIGHT / 2, LEFT_MOUSE_RADIUS-2);
 
-		uiRenderer.circle(BOMB_MOUSE_X - SCREEN_WIDTH / 2, BOMB_MOUSE_Y - SCREEN_HEIGHT / 2, BOMB_MOUSE_RADIUS);
+		uiRenderer.circle(BOMB_MOUSE_X - SCREEN_WIDTH / 2, BOMB_MOUSE_Y - SCREEN_HEIGHT / 2, rightRad);
 		//uiRenderer.circle(BOMB_MOUSE_X - SCREEN_WIDTH / 2, BOMB_MOUSE_Y - SCREEN_HEIGHT / 2, BOMB_MOUSE_RADIUS-1);
 		//uiRenderer.circle(BOMB_MOUSE_X - SCREEN_WIDTH / 2, BOMB_MOUSE_Y - SCREEN_HEIGHT / 2, BOMB_MOUSE_RADIUS-2);
 		uiRenderer.end();
